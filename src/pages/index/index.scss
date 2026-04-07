@@ -1,0 +1,72 @@
+.index {
+  padding: 32px;
+
+  .header {
+    margin-bottom: 40px;
+
+    .title {
+      font-size: 48px;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 26px;
+      color: #999;
+    }
+  }
+
+  .search-bar {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin-bottom: 40px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    .search-placeholder {
+      color: #bbb;
+      font-size: 28px;
+    }
+  }
+
+  .section {
+    .section-title {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 24px;
+      display: block;
+    }
+  }
+
+  .space-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    .space-name {
+      font-size: 32px;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .space-info {
+      font-size: 24px;
+      color: #999;
+    }
+  }
+
+  .add-btn {
+    width: 100%;
+    background: #4a90d9;
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    padding: 24px;
+    font-size: 30px;
+    margin-top: 20px;
+  }
+}

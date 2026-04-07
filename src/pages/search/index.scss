@@ -1,0 +1,30 @@
+.search-page {
+  padding: 32px;
+
+  .search-bar {
+    margin-bottom: 32px;
+    .search-input {
+      width: 100%; padding: 24px 32px; background: #fff; border-radius: 16px;
+      font-size: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;
+    }
+  }
+
+  .result-card {
+    background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    .result-location {
+      margin-bottom: 8px;
+      .location-space { font-size: 24px; color: #999; }
+      .location-sep { font-size: 24px; color: #ccc; }
+      .location-room { font-size: 24px; color: #999; }
+      .location-container { font-size: 24px; color: #4a90d9; font-weight: 600; }
+    }
+    .result-slot {
+      margin-bottom: 8px;
+      .slot-label { font-size: 26px; font-weight: 600; color: #333; }
+    }
+    .result-items { font-size: 26px; color: #666; }
+  }
+
+  .empty { text-align: center; padding: 80px 0; color: #999; font-size: 28px; }
+}
