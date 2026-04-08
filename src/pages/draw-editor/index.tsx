@@ -1,12 +1,13 @@
 import { View, Text, Canvas, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
+import { getSpaces, getSpace, createSpace, deleteSpace, addRoom, addContainer } from '../../services/space'
 import './index.scss'
 
 // ===== Constants =====
 const SNAP_DISTANCE = 10
 const MIN_SIZE = 15
-const FLOOR_PX_TO_MM = 20
+const FLOOR_PX_TO_MM = 30
 const ELEV_PX_TO_MM = 5
 const CANVAS_ID = 'draw-canvas'
 
@@ -595,15 +596,94 @@ export default function DrawEditor() {
     setSelectedRectId(null); selectedIdRef.current = null
   }
 
-  // ===== Finish =====
-  function handleFinish() {
-    handleSave()
-    Taro.showModal({
-      title: '设定完成',
-      content: '所有空间和储物柜已设定完毕，数据已保存。',
-      showCancel: false,
-      success: () => { Taro.navigateBack() },
-    })
+  // ===== Finish: save to space service + floorplan localStorage =====
+  async function handleFinish() {
+    Taro.showLoading({ title: '保存中...' })
+
+    try {
+      const json = generateJSON()
+
+      // 1. Save visual floorplan data for FloorplanView (includes container positions)
+      Taro.setStorageSync('drawn_floorplan', JSON.stringify({
+        unit: json.unit, scale: json.scale,
+        rooms: json.rooms, furniture: json.furniture,
+        containers: json.containers.map((c: any) => ({
+          name: c.name, x: c.x, y: c.y, width: c.width, height: c.height,
+        })),
+      }))
+
+      // 2. Save rect data for draw-editor reload
+      Taro.setStorageSync('draw_all_rects', JSON.stringify(allRects))
+
+      // 3. Assign containers to rooms by spatial containment
+      json.containers.forEach((c: any) => {
+        const cx = c.x + c.width / 2; const cy = c.y + c.height / 2
+        const room = json.rooms.find((r: any) => {
+          const xs = r.walls.map((w: any) => Math.min(w.x1, w.x2))
+          const ys = r.walls.map((w: any) => Math.min(w.y1, w.y2))
+          const rx = Math.min(...xs); const ry = Math.min(...ys)
+          const rw = Math.max(...r.walls.map((w: any) => Math.max(w.x1, w.x2))) - rx
+          const rh = Math.max(...r.walls.map((w: any) => Math.max(w.y1, w.y2))) - ry
+          return cx >= rx && cx <= rx + rw && cy >= ry && cy <= ry + rh
+        })
+        c.roomJsonId = room?.id
+      })
+
+      // 4. Delete existing space, create fresh
+      const existingSpaces = await getSpaces()
+      for (const s of existingSpaces) {
+        await deleteSpace(s._id)
+      }
+
+      const space = await createSpace('我的家')
+
+      // 5. Create rooms and track ID mapping (drawId → serviceId)
+      const roomIdMap: Record<string, string> = {}
+      for (const drawnRoom of json.rooms) {
+        const room = await addRoom(space._id, drawnRoom.name)
+        if (room) roomIdMap[drawnRoom.id] = room._id
+      }
+
+      // 6. Create containers with slots in matching rooms
+      for (const c of json.containers) {
+        const serviceRoomId = roomIdMap[c.roomJsonId] || Object.values(roomIdMap)[0]
+        if (!serviceRoomId) continue
+
+        // Flatten columns → slots array
+        const slots: any[] = []
+        for (const col of (c.columns || [])) {
+          for (const s of col.slots) {
+            slots.push({
+              label: s.categories?.length > 0 ? s.categories.join('+') : `格${slots.length + 1}`,
+              type: s.type === 'drawer' ? 'drawer' : 'shelf',
+              items: [],
+              photo: '',
+            })
+          }
+        }
+
+        await addContainer(space._id, serviceRoomId, {
+          name: c.name,
+          type: 'custom',
+          movable: false,
+          photo: '',
+          x: c.x, y: c.y, width: c.width, height: c.height,
+          slots: slots.length > 0 ? slots : [{ label: '第1层', type: 'shelf', items: '', photo: '' }],
+        })
+      }
+
+      Taro.hideLoading()
+      Taro.showModal({
+        title: '设定完成',
+        content: `已创建 ${json.rooms.length} 个房间、${json.containers.length} 个储物柜`,
+        showCancel: false,
+        success: () => Taro.navigateBack(),
+      })
+    } catch (e) {
+      Taro.hideLoading()
+      console.error('handleFinish error:', e)
+      Taro.showToast({ title: '保存失败，请重试', icon: 'none' })
+    }
   }
 
   // ===== Save/Export =====

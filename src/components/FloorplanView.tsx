@@ -1,13 +1,14 @@
 import { View, Text, Canvas } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useEffect, useRef, useState } from 'react'
-import floorplanData from '../data/floorplan.json'
+import staticFloorplan from '../data/floorplan.json'
 import './FloorplanView.scss'
 
 interface Container {
   _id: string
   name: string
   slots?: any[]
+  x?: number; y?: number; width?: number; height?: number
 }
 
 interface Room {
@@ -23,6 +24,7 @@ interface FloorplanViewProps {
   onContainerClick?: (roomId: string, containerId: string) => void
 }
 
+// Fallback hardcoded positions (used when container has no x/y/width/height)
 const CONTAINER_POS: Record<string, { x: number; y: number; w: number; h: number }> = {
   '衣柜': { x: 200, y: 2800, w: 2100, h: 600 },
   '五斗柜': { x: 2700, y: 2800, w: 800, h: 500 },
@@ -40,8 +42,17 @@ interface HitArea {
   x: number; y: number; w: number; h: number
 }
 
-const FP_W = 7200
-const FP_H = 7700
+// Load drawn floorplan from localStorage, fall back to static JSON
+function getFloorplanData(): any {
+  try {
+    const saved = Taro.getStorageSync('drawn_floorplan')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (parsed?.rooms?.length > 0) return parsed
+    }
+  } catch {}
+  return staticFloorplan
+}
 
 export default function FloorplanView({ rooms, compact, highlightContainerId, onContainerClick }: FloorplanViewProps) {
   const hitAreasRef = useRef<HitArea[]>([])
@@ -53,6 +64,41 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
   }, [rooms, highlightContainerId])
 
   function draw() {
+    const floorplanData = getFloorplanData()
+
+    // Build container position map from drawn_floorplan
+    const drawnContainerPos: Record<string, { x: number; y: number; w: number; h: number }> = {}
+    if (floorplanData.containers) {
+      floorplanData.containers.forEach((c: any) => {
+        if (c.name && c.x != null) {
+          drawnContainerPos[c.name] = { x: c.x, y: c.y, w: c.width, h: c.height }
+        }
+      })
+    }
+
+    // Calculate bounding box (min/max) of all elements for centering
+    let minX = Infinity; let minY = Infinity; let maxX = -Infinity; let maxY = -Infinity
+    floorplanData.rooms.forEach((room: any) => {
+      room.walls.forEach((w: any) => {
+        minX = Math.min(minX, w.x1, w.x2); minY = Math.min(minY, w.y1, w.y2)
+        maxX = Math.max(maxX, w.x1, w.x2); maxY = Math.max(maxY, w.y1, w.y2)
+      })
+    })
+    if (floorplanData.furniture) {
+      floorplanData.furniture.forEach((f: any) => {
+        minX = Math.min(minX, f.x); minY = Math.min(minY, f.y)
+        maxX = Math.max(maxX, f.x + f.width); maxY = Math.max(maxY, f.y + f.height)
+      })
+    }
+    Object.values(drawnContainerPos).forEach((p: any) => {
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y)
+      maxX = Math.max(maxX, p.x + p.w); maxY = Math.max(maxY, p.y + p.h)
+    })
+
+    if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 7200; maxY = 7700 }
+    const fpW = maxX - minX || 7200
+    const fpH = maxY - minY || 7700
+
     const query = Taro.createSelectorQuery()
     query.select(`#${canvasId}`).fields({ node: true, size: true }).exec((res) => {
       if (!res[0]) return
@@ -60,9 +106,9 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
       const ctx = canvas.getContext('2d')
       const dpr = 2
       const cw = res[0].width
-      const ch = cw * (FP_H / FP_W)
+      const padBot = compact ? 16 : 36
+      const ch = cw * (fpH / fpW) + padBot
 
-      // Update CSS height to match
       setCanvasHeight(ch)
 
       canvas.width = cw * dpr
@@ -70,24 +116,25 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
       ctx.scale(dpr, dpr)
       ctx.clearRect(0, 0, cw, ch)
 
-      const pad = 16
-      const scale = (cw - pad * 2) / FP_W
-      const ox = pad
-      const oy = pad
+      const padSide = 16
+      const padBottom = compact ? 16 : 36
+      const scale = (cw - padSide * 2) / fpW
+      const ox = padSide - minX * scale
+      const oy = padSide - minY * scale
 
       const hits: HitArea[] = []
 
       // Rooms
-      floorplanData.rooms.forEach(room => {
-        const rx = Math.min(...room.walls.map(w => w.x1), ...room.walls.map(w => w.x2))
-        const ry = Math.min(...room.walls.map(w => w.y1), ...room.walls.map(w => w.y2))
-        const rw = Math.max(...room.walls.map(w => w.x1), ...room.walls.map(w => w.x2)) - rx
-        const rh = Math.max(...room.walls.map(w => w.y1), ...room.walls.map(w => w.y2)) - ry
+      floorplanData.rooms.forEach((room: any) => {
+        const rx = Math.min(...room.walls.map((w: any) => w.x1), ...room.walls.map((w: any) => w.x2))
+        const ry = Math.min(...room.walls.map((w: any) => w.y1), ...room.walls.map((w: any) => w.y2))
+        const rw = Math.max(...room.walls.map((w: any) => w.x1), ...room.walls.map((w: any) => w.x2)) - rx
+        const rh = Math.max(...room.walls.map((w: any) => w.y1), ...room.walls.map((w: any) => w.y2)) - ry
 
         ctx.fillStyle = '#f8f9fb'
         ctx.fillRect(ox + rx * scale, oy + ry * scale, rw * scale, rh * scale)
 
-        room.walls.forEach(w => {
+        room.walls.forEach((w: any) => {
           ctx.beginPath()
           ctx.moveTo(ox + w.x1 * scale, oy + w.y1 * scale)
           ctx.lineTo(ox + w.x2 * scale, oy + w.y2 * scale)
@@ -96,16 +143,18 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
           ctx.stroke()
         })
 
-        room.windows.forEach(win => {
-          ctx.beginPath()
-          ctx.moveTo(ox + win.x * scale, oy + win.y * scale)
-          ctx.lineTo(ox + (win.x + win.width) * scale, oy + win.y * scale)
-          ctx.strokeStyle = 'hsl(217, 91%, 60%)'
-          ctx.lineWidth = 3
-          ctx.globalAlpha = 0.4
-          ctx.stroke()
-          ctx.globalAlpha = 1
-        })
+        if (room.windows) {
+          room.windows.forEach((win: any) => {
+            ctx.beginPath()
+            ctx.moveTo(ox + win.x * scale, oy + (win.y || 0) * scale)
+            ctx.lineTo(ox + (win.x + win.width) * scale, oy + (win.y || 0) * scale)
+            ctx.strokeStyle = 'hsl(217, 91%, 60%)'
+            ctx.lineWidth = 3
+            ctx.globalAlpha = 0.4
+            ctx.stroke()
+            ctx.globalAlpha = 1
+          })
+        }
 
         ctx.fillStyle = '#8e99a4'
         const fs = compact ? 10 : 12
@@ -115,25 +164,36 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
       })
 
       // Furniture
-      floorplanData.furniture.forEach(f => {
-        const fx = ox + f.x * scale
-        const fy = oy + f.y * scale
-        const fw = f.width * scale
-        const fh = f.height * scale
-        ctx.strokeStyle = '#a0a8b4'
-        ctx.lineWidth = 1
-        ctx.strokeRect(fx, fy, fw, fh)
-        ctx.fillStyle = '#a0a8b4'
-        ctx.font = `400 ${compact ? 7 : 9}px -apple-system, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.fillText(f.name, fx + fw / 2, fy + fh / 2 + 3)
-      })
+      if (floorplanData.furniture) {
+        floorplanData.furniture.forEach((f: any) => {
+          const fx = ox + f.x * scale
+          const fy = oy + f.y * scale
+          const fw = f.width * scale
+          const fh = f.height * scale
+          ctx.strokeStyle = '#a0a8b4'
+          ctx.lineWidth = 1
+          ctx.strokeRect(fx, fy, fw, fh)
+          ctx.fillStyle = '#a0a8b4'
+          ctx.font = `400 ${compact ? 7 : 9}px -apple-system, sans-serif`
+          ctx.textAlign = 'center'
+          ctx.fillText(f.name, fx + fw / 2, fy + fh / 2 + 3)
+        })
+      }
 
-      // Containers
+      // Containers — priority: drawnContainerPos (from localStorage) → container props → CONTAINER_POS
       rooms.forEach(room => {
         room.containers?.forEach(container => {
-          const pos = CONTAINER_POS[container.name]
+          let pos: { x: number; y: number; w: number; h: number } | undefined
+          // 1st: from drawn_floorplan container positions (most reliable)
+          pos = drawnContainerPos[container.name]
+          // 2nd: from container's own fields (if cloud stored them)
+          if (!pos && container.x != null && container.y != null && container.width != null && container.height != null) {
+            pos = { x: container.x, y: container.y, w: container.width, h: container.height }
+          }
+          // 3rd: hardcoded fallback
+          if (!pos) pos = CONTAINER_POS[container.name]
           if (!pos) return
+
           const cx = ox + pos.x * scale
           const cy = oy + pos.y * scale
           const cww = pos.w * scale
@@ -166,16 +226,16 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
         })
       })
 
-      // Dimension labels
+      // Dimension labels (centered)
       if (!compact) {
         ctx.fillStyle = '#8e99a4'
         ctx.font = '400 10px -apple-system, sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(`${FP_W}mm`, ox + FP_W * scale / 2, ch - 4)
+        ctx.fillText(`${Math.round(fpW)}mm`, padSide + fpW * scale / 2, ch - 4)
         ctx.save()
-        ctx.translate(8, oy + FP_H * scale / 2)
+        ctx.translate(8, padSide + fpH * scale / 2)
         ctx.rotate(-Math.PI / 2)
-        ctx.fillText(`${FP_H}mm`, 0, 0)
+        ctx.fillText(`${Math.round(fpH)}mm`, 0, 0)
         ctx.restore()
       }
 
