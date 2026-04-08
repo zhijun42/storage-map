@@ -1,5 +1,5 @@
 import { View, Text, Button } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { getSpaces, createSpace } from '../../services/space'
 import './index.scss'
@@ -10,6 +10,8 @@ export default function Index() {
   useEffect(() => {
     loadSpaces()
   }, [])
+
+  useDidShow(() => { loadSpaces() })
 
   async function loadSpaces() {
     const data = await getSpaces()
