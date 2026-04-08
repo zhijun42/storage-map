@@ -15,6 +15,7 @@ export default defineConfig({
   plugins: [],
   defineConstants: {},
   copy: { patterns: [], options: {} },
+  cloud: true,  // 启用微信云开发
   framework: 'react',
   compiler: 'webpack5',
   mini: {
