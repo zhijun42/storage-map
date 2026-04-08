@@ -2,6 +2,7 @@ import { View, Text, Canvas, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { getSpaces, getSpace, createSpace, deleteSpace, addRoom, addContainer } from '../../services/space'
+import { CATEGORIES } from '../../services/items'
 import './index.scss'
 
 // ===== Constants =====
@@ -27,7 +28,7 @@ const PHASE_LABELS: Record<Phase, string[]> = {
   room:      ['主卧', '次卧', '客厅', '厨房', '卫生间', '阳台', '书房', '玄关'],
   furniture: ['双人床', '单人床', '沙发', '餐桌', '书桌', '茶几', '电视'],
   cabinet:   ['衣柜', '书架', '鞋柜', '电视柜', '五斗柜', '储物柜', '床头柜'],
-  elevation: ['衣物', '数码', '书籍', '鞋包', '杂物', '化妆品', '食品', '药品'],
+  elevation: CATEGORIES,
 }
 
 // No BG_COLORS needed — each phase has fixed visual style matching the floorplan reference

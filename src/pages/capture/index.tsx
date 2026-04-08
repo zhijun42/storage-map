@@ -28,6 +28,12 @@ export default function CapturePage() {
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
 
+  // Smart recommendation
+  const [recommendation, setRecommendation] = useState<{
+    roomIndex: number; containerIndex: number; slotIndex: number
+    roomName: string; containerName: string; slotLabel: string; reason: string
+  } | null>(null)
+
   const today = new Date().toISOString().slice(0, 10)
 
   useEffect(() => { loadData() }, [])
@@ -41,6 +47,64 @@ export default function CapturePage() {
         setRooms(full.rooms)
       }
     }
+  }
+
+  // Smart recommend: find best slot for a given category
+  function recommendForCategory(catIdx: number) {
+    if (catIdx < 0 || rooms.length === 0) { setRecommendation(null); return }
+    const cat = CATEGORIES[catIdx]
+    let bestScore = -1
+    let best: typeof recommendation = null
+
+    rooms.forEach((room: any, ri: number) => {
+      room.containers?.forEach((container: any, ci: number) => {
+        container.slots?.forEach((slot: any, si: number) => {
+          let score = 0
+          // Slot categories match (from draw-editor labels)
+          const slotCats: string[] = slot.categories || []
+          if (slotCats.includes(cat)) score += 10
+          // Slot label contains category name
+          if ((slot.label || '').includes(cat)) score += 5
+          // Existing items of same category
+          const items = normalizeItems(slot.items)
+          const sameCatCount = items.filter((i: any) => i.category === cat).length
+          score += sameCatCount * 2
+          // Fewer total items = more space available
+          if (items.length < 5) score += 2
+          if (items.length === 0) score += 1
+
+          if (score > bestScore) {
+            bestScore = score
+            best = {
+              roomIndex: ri, containerIndex: ci, slotIndex: si,
+              roomName: room.name, containerName: container.name,
+              slotLabel: slot.label || `格${si + 1}`,
+              reason: slotCats.includes(cat) ? `该隔间标记为「${cat}」类`
+                : sameCatCount > 0 ? `已有 ${sameCatCount} 件同类物品`
+                : '该位置空间较充裕',
+            }
+          }
+        })
+      })
+    })
+
+    setRecommendation(bestScore > 0 ? best : null)
+  }
+
+  function acceptRecommendation() {
+    if (!recommendation) return
+    handleRoomChange(recommendation.roomIndex)
+    setTimeout(() => {
+      handleContainerChange(recommendation.containerIndex)
+      setTimeout(() => {
+        setSelectedSlotIndex(recommendation.slotIndex)
+      }, 50)
+    }, 50)
+  }
+
+  function handleCategoryChange(idx: number) {
+    setCategoryIndex(idx)
+    recommendForCategory(idx)
   }
 
   function handleRoomChange(index: number) {
@@ -131,7 +195,7 @@ export default function CapturePage() {
         {/* Category */}
         <View className='field'>
           <Text className='label'>物品类型 *</Text>
-          <Picker mode='selector' range={CATEGORIES} onChange={e => setCategoryIndex(Number(e.detail.value))}>
+          <Picker mode='selector' range={CATEGORIES} onChange={e => handleCategoryChange(Number(e.detail.value))}>
             <View className='picker-wrap'>
               <Text className={categoryIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
                 {categoryIndex >= 0 ? CATEGORIES[categoryIndex] : '请选择类型'}
@@ -139,6 +203,20 @@ export default function CapturePage() {
               <Text className='picker-arrow'>▾</Text>
             </View>
           </Picker>
+
+          {/* Smart recommendation */}
+          {recommendation && selectedSlotIndex < 0 && (
+            <View className='recommend-banner' onClick={acceptRecommendation}>
+              <View className='recommend-info'>
+                <Text className='recommend-title'>推荐位置</Text>
+                <Text className='recommend-loc'>
+                  {recommendation.roomName} › {recommendation.containerName} › {recommendation.slotLabel}
+                </Text>
+                <Text className='recommend-reason'>{recommendation.reason}</Text>
+              </View>
+              <Text className='recommend-action'>采纳</Text>
+            </View>
+          )}
         </View>
 
         {/* Price */}
