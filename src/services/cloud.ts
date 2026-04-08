@@ -149,35 +149,42 @@ export async function cloudAddContainer(spaceId: string, roomId: string, contain
   const db = getDb()
   const count = await db.collection('containers').where({ roomId }).count()
 
-  const res = await db.collection('containers').add({
-    data: {
-      spaceId,
-      roomId,
-      parentId: container.parentId || null,
-      name: container.name,
-      type: container.type || 'custom',
-      movable: container.movable || false,
-      photo: container.photo || '',
-      order: count.total,
-      createdAt: new Date(),
-    },
-  })
+  const containerData: any = {
+    spaceId,
+    roomId,
+    parentId: container.parentId || null,
+    name: container.name,
+    type: container.type || 'custom',
+    movable: container.movable || false,
+    photo: container.photo || '',
+    order: count.total,
+    createdAt: new Date(),
+  }
+  // Preserve spatial + elevation fields from draw-editor
+  if (container.x != null) containerData.x = container.x
+  if (container.y != null) containerData.y = container.y
+  if (container.width != null) containerData.width = container.width
+  if (container.height != null) containerData.height = container.height
+  if (container.elevationAspect != null) containerData.elevationAspect = container.elevationAspect
+
+  const res = await db.collection('containers').add({ data: containerData })
 
   const containerId = res._id
 
-  // 创建默认slots
+  // 创建slots（包括空间布局数据）
   const slots = container.slots || [{ label: '第1层', type: 'shelf', items: '', photo: '' }]
   for (let i = 0; i < slots.length; i++) {
-    await db.collection('slots').add({
-      data: {
-        containerId,
-        label: slots[i].label,
-        type: slots[i].type || 'shelf',
-        items: slots[i].items || '',
-        photo: slots[i].photo || '',
-        order: i,
-      },
-    })
+    const slotData: any = {
+      containerId,
+      label: slots[i].label,
+      type: slots[i].type || 'shelf',
+      items: slots[i].items || '',
+      photo: slots[i].photo || '',
+      order: i,
+    }
+    if (slots[i].categories) slotData.categories = slots[i].categories
+    if (slots[i].rx != null) { slotData.rx = slots[i].rx; slotData.ry = slots[i].ry; slotData.rw = slots[i].rw; slotData.rh = slots[i].rh }
+    await db.collection('slots').add({ data: slotData })
   }
 
   return { _id: containerId, ...container }
@@ -190,16 +197,17 @@ export async function cloudUpdateContainer(spaceId: string, roomId: string, cont
   if (updates.slots) {
     await db.collection('slots').where({ containerId }).remove()
     for (let i = 0; i < updates.slots.length; i++) {
-      await db.collection('slots').add({
-        data: {
-          containerId,
-          label: updates.slots[i].label,
-          type: updates.slots[i].type || 'shelf',
-          items: updates.slots[i].items || '',
-          photo: updates.slots[i].photo || '',
-          order: i,
-        },
-      })
+      const slotData: any = {
+        containerId,
+        label: updates.slots[i].label,
+        type: updates.slots[i].type || 'shelf',
+        items: updates.slots[i].items || '',
+        photo: updates.slots[i].photo || '',
+        order: i,
+      }
+      if (updates.slots[i].categories) slotData.categories = updates.slots[i].categories
+      if (updates.slots[i].rx != null) { slotData.rx = updates.slots[i].rx; slotData.ry = updates.slots[i].ry; slotData.rw = updates.slots[i].rw; slotData.rh = updates.slots[i].rh }
+      await db.collection('slots').add({ data: slotData })
     }
     // 从updates中移除slots，剩余字段更新container本身
     const { slots, ...containerUpdates } = updates

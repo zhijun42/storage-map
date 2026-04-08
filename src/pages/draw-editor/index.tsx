@@ -644,22 +644,37 @@ export default function DrawEditor() {
         if (room) roomIdMap[drawnRoom.id] = room._id
       }
 
-      // 6. Create containers with slots in matching rooms
+      // 6. Create containers with slots (spatial layout from elevation rects)
       for (const c of json.containers) {
         const serviceRoomId = roomIdMap[c.roomJsonId] || Object.values(roomIdMap)[0]
         if (!serviceRoomId) continue
 
-        // Flatten columns → slots array
-        const slots: any[] = []
-        for (const col of (c.columns || [])) {
-          for (const s of col.slots) {
-            slots.push({
-              label: s.categories?.length > 0 ? s.categories.join('+') : `格${slots.length + 1}`,
-              type: s.type === 'drawer' ? 'drawer' : 'shelf',
-              items: [],
-              photo: '',
-            })
-          }
+        // Get raw elevation rects for this cabinet
+        const elevRects = allRects.filter(r => r.phase === 'elevation' && r.cabinetId === c.id)
+        let slots: any[] = []
+        let elevationAspect = 1
+
+        if (elevRects.length > 0) {
+          // Compute bounding box of all elevation rects
+          let eMinX = Infinity; let eMinY = Infinity; let eMaxX = -Infinity; let eMaxY = -Infinity
+          elevRects.forEach(r => {
+            eMinX = Math.min(eMinX, r.x); eMinY = Math.min(eMinY, r.y)
+            eMaxX = Math.max(eMaxX, r.x + r.w); eMaxY = Math.max(eMaxY, r.y + r.h)
+          })
+          const eW = eMaxX - eMinX || 1; const eH = eMaxY - eMinY || 1
+          elevationAspect = eH / eW
+
+          slots = elevRects.map((r, i) => ({
+            label: r.labels.length > 0 ? r.labels.join('+') : `格${i + 1}`,
+            type: r.slotType === 'closed' ? 'drawer' : 'shelf',
+            categories: [...r.labels],
+            items: [],
+            photo: '',
+            rx: (r.x - eMinX) / eW,
+            ry: (r.y - eMinY) / eH,
+            rw: r.w / eW,
+            rh: r.h / eH,
+          }))
         }
 
         await addContainer(space._id, serviceRoomId, {
@@ -667,6 +682,7 @@ export default function DrawEditor() {
           type: 'custom',
           movable: false,
           photo: '',
+          elevationAspect,
           x: c.x, y: c.y, width: c.width, height: c.height,
           slots: slots.length > 0 ? slots : [{ label: '第1层', type: 'shelf', items: '', photo: '' }],
         })

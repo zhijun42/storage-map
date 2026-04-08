@@ -150,6 +150,7 @@ export default function ContainerPage() {
         <IsometricView
           containerName={container.name}
           slots={container.slots || []}
+          elevationAspect={container.elevationAspect}
           highlightSlotIndex={selectedSlot}
           onSlotClick={(i) => setSelectedSlot(selectedSlot === i ? null : i)}
         />

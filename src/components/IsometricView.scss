@@ -76,6 +76,76 @@ $border-color: hsl(220, 20%, 25%);
       &:last-child { border-right: none; }
     }
   }
+
+  // Flexible absolute-positioned layout
+  &.flexible {
+    min-height: 0;
+    border: none;
+
+    .front-aspect {
+      position: relative;
+      width: 100%;
+      border: 2px solid $border-color;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .front-inner {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+    }
+
+    .slot-abs {
+      position: absolute;
+      box-sizing: border-box;
+      border: 1.5px solid hsl(210, 6%, 78%);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+
+      &:active { background: hsl(210, 10%, 94%); }
+
+      &.highlighted {
+        background: hsl(45, 100%, 92%);
+        box-shadow: inset 0 0 0 2px hsl(45, 96%, 53%);
+      }
+
+      &.open {
+        .perspective-lines {
+          position: absolute;
+          top: 5px; left: 5px; right: 5px; bottom: 5px;
+          background: hsl(210, 5%, 88%);
+          border: 1px solid hsl(210, 6%, 80%);
+          pointer-events: none;
+        }
+      }
+
+      &.drawer {
+        background: #fff;
+
+        .drawer-handle {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          border: 2px solid hsl(220, 12%, 45%);
+          background: transparent;
+          margin-bottom: 4px;
+        }
+      }
+
+      .slot-category {
+        font-size: 18px;
+        color: hsl(220, 12%, 40%);
+        text-align: center;
+        font-weight: 500;
+        position: relative;
+        z-index: 1;
+      }
+    }
+  }
 }
 
 .slot {

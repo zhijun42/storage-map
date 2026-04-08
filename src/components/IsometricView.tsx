@@ -6,12 +6,15 @@ interface Slot {
   label: string
   type: string
   items: any
+  categories?: string[]
+  rx?: number; ry?: number; rw?: number; rh?: number
 }
 
 interface IsometricViewProps {
   containerName: string
   slots: Slot[]
   dimensions?: { width: number; height: number; depth: number }
+  elevationAspect?: number
   highlightSlotIndex?: number | null
   onSlotClick?: (slotIndex: number) => void
 }
@@ -21,16 +24,32 @@ function detectLayout(slots: Slot[]): 'horizontal' | 'vertical' {
   return labels.some(l => l.includes('左') || l.includes('右')) ? 'horizontal' : 'vertical'
 }
 
+function hasFlexibleLayout(slots: Slot[]): boolean {
+  return slots.some(s => s.rx != null && s.ry != null && s.rw != null && s.rh != null)
+}
+
+function getSlotCategories(slot: Slot): string {
+  // Merge categories from slot.categories and from items
+  const slotCats = slot.categories || []
+  const itemCats = [...new Set(normalizeItems(slot.items).map(i => i.category).filter(Boolean))]
+  const allCats = [...new Set([...slotCats, ...itemCats])]
+  if (allCats.length === 0) return ''
+  return allCats.length <= 2 ? allCats.join('，') : `${allCats[0]}等`
+}
+
 export default function IsometricView({
   containerName,
   slots,
   dimensions,
+  elevationAspect,
   highlightSlotIndex,
   onSlotClick,
 }: IsometricViewProps) {
   if (!slots || slots.length === 0) return null
 
-  const layout = detectLayout(slots)
+  const flexible = hasFlexibleLayout(slots)
+  const layout = flexible ? 'flexible' : detectLayout(slots)
+  const aspect = elevationAspect || 1.2
 
   return (
     <View className='isometric-container'>
@@ -45,28 +64,64 @@ export default function IsometricView({
         <View className='cabinet-top' />
         <View className='cabinet-side' />
         <View className='cabinet-edge' />
-        <View className={`cabinet-front ${layout}`}>
-          {slots.map((slot, index) => {
-            const isHighlighted = highlightSlotIndex === index
-            const isDrawer = slot.type === 'drawer'
-            const isOpen = slot.type === 'open' || slot.type === 'shelf' || slot.type === 'rod'
-            const items = normalizeItems(slot.items)
-            const cats = [...new Set(items.map(i => i.category).filter(Boolean))]
-            const category = cats.length <= 2 ? cats.join('，') : `${cats[0]}等`
 
-            return (
-              <View
-                key={index}
-                className={`slot ${isHighlighted ? 'highlighted' : ''} ${isDrawer ? 'drawer' : ''} ${isOpen ? 'open' : ''}`}
-                onClick={() => onSlotClick?.(index)}
-              >
-                {isOpen && <View className='perspective-lines' />}
-                {isDrawer && <View className='drawer-handle' />}
-                {category && <Text className='slot-category'>{category}</Text>}
+        {flexible ? (
+          // Flexible absolute-positioned layout (from draw-editor elevation)
+          <View className='cabinet-front flexible'>
+            <View
+              className='front-aspect'
+              style={{ paddingBottom: `${aspect * 100}%` }}
+            >
+              <View className='front-inner'>
+                {slots.map((slot, index) => {
+                  const isHighlighted = highlightSlotIndex === index
+                  const isDrawer = slot.type === 'drawer'
+                  const category = getSlotCategories(slot)
+
+                  return (
+                    <View
+                      key={index}
+                      className={`slot-abs ${isHighlighted ? 'highlighted' : ''} ${isDrawer ? 'drawer' : 'open'}`}
+                      style={{
+                        left: `${(slot.rx || 0) * 100}%`,
+                        top: `${(slot.ry || 0) * 100}%`,
+                        width: `${(slot.rw || 1) * 100}%`,
+                        height: `${(slot.rh || 1) * 100}%`,
+                      }}
+                      onClick={() => onSlotClick?.(index)}
+                    >
+                      {!isDrawer && <View className='perspective-lines' />}
+                      {isDrawer && <View className='drawer-handle' />}
+                      {category ? <Text className='slot-category'>{category}</Text> : null}
+                    </View>
+                  )
+                })}
               </View>
-            )
-          })}
-        </View>
+            </View>
+          </View>
+        ) : (
+          // Legacy flex layout
+          <View className={`cabinet-front ${layout}`}>
+            {slots.map((slot, index) => {
+              const isHighlighted = highlightSlotIndex === index
+              const isDrawer = slot.type === 'drawer'
+              const isOpen = slot.type === 'open' || slot.type === 'shelf' || slot.type === 'rod'
+              const category = getSlotCategories(slot)
+
+              return (
+                <View
+                  key={index}
+                  className={`slot ${isHighlighted ? 'highlighted' : ''} ${isDrawer ? 'drawer' : ''} ${isOpen ? 'open' : ''}`}
+                  onClick={() => onSlotClick?.(index)}
+                >
+                  {isOpen && <View className='perspective-lines' />}
+                  {isDrawer && <View className='drawer-handle' />}
+                  {category ? <Text className='slot-category'>{category}</Text> : null}
+                </View>
+              )
+            })}
+          </View>
+        )}
       </View>
 
       {dimensions && (
