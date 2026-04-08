@@ -57,10 +57,23 @@
         &:active { opacity: 0.9; }
       }
 
+      &.ai {
+        background: linear-gradient(135deg, hsl(217, 91%, 55%), hsl(260, 70%, 55%));
+        border-color: transparent;
+
+        &:active { opacity: 0.9; }
+      }
+
       .action-text {
         font-size: 28px;
         font-weight: 500;
         color: hsl(220, 25%, 10%);
+      }
+
+      .action-text-ai {
+        font-size: 28px;
+        font-weight: 600;
+        color: #fff;
       }
 
       .action-text-primary {

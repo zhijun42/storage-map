@@ -1,0 +1,238 @@
+.ai-page {
+  padding: 32px;
+  padding-bottom: 60px;
+  min-height: 100vh;
+  background: hsl(210, 20%, 98%);
+
+  .section-title {
+    display: block;
+    font-size: 30px;
+    font-weight: 700;
+    color: hsl(220, 25%, 10%);
+    margin-bottom: 16px;
+  }
+
+  // ===== Intro =====
+  .intro {
+    padding-top: 80px;
+    text-align: center;
+
+    .intro-title {
+      display: block;
+      font-size: 40px;
+      font-weight: 800;
+      color: hsl(220, 25%, 10%);
+      margin-bottom: 20px;
+    }
+
+    .intro-desc {
+      display: block;
+      font-size: 26px;
+      color: hsl(215, 10%, 46%);
+      line-height: 1.7;
+      margin-bottom: 48px;
+      padding: 0 20px;
+    }
+
+    .generate-btn {
+      margin: 0 auto;
+      width: 80%;
+      padding: 30px;
+      background: linear-gradient(135deg, hsl(217, 91%, 55%), hsl(260, 70%, 55%));
+      border-radius: 999px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+
+      &:active { opacity: 0.9; }
+
+      .generate-text {
+        font-size: 30px;
+        font-weight: 700;
+        color: #fff;
+      }
+    }
+  }
+
+  .error-text {
+    display: block;
+    margin-top: 24px;
+    font-size: 24px;
+    color: hsl(0, 72%, 50%);
+    text-align: center;
+  }
+
+  .error-box {
+    margin-top: 24px;
+    text-align: center;
+  }
+
+  // ===== Stats =====
+  .stats-section {
+    margin-bottom: 24px;
+
+    .stats-summary {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+
+      .stat-item {
+        flex: 1;
+        background: #fff;
+        border-radius: 14px;
+        padding: 20px 12px;
+        text-align: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+        .stat-num {
+          display: block;
+          font-size: 36px;
+          font-weight: 800;
+          color: hsl(217, 91%, 50%);
+        }
+
+        .stat-label {
+          display: block;
+          font-size: 22px;
+          color: hsl(215, 10%, 50%);
+          margin-top: 4px;
+        }
+      }
+    }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px 24px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+      .chart-title {
+        display: block;
+        font-size: 26px;
+        font-weight: 600;
+        color: hsl(220, 25%, 10%);
+        margin-bottom: 16px;
+      }
+
+      .bar-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+
+        .bar-label {
+          width: 100px;
+          font-size: 22px;
+          color: hsl(215, 10%, 40%);
+          text-align: right;
+          flex-shrink: 0;
+        }
+
+        .bar-track {
+          flex: 1;
+          height: 16px;
+          background: hsl(210, 12%, 94%);
+          border-radius: 8px;
+          overflow: hidden;
+
+          .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, hsl(217, 91%, 60%), hsl(260, 60%, 55%));
+            border-radius: 8px;
+            min-width: 8px;
+          }
+        }
+
+        .bar-count {
+          width: 40px;
+          font-size: 22px;
+          font-weight: 600;
+          color: hsl(220, 25%, 10%);
+          flex-shrink: 0;
+        }
+      }
+    }
+  }
+
+  // ===== Loading =====
+  .loading-state {
+    padding-top: 40px;
+    text-align: center;
+
+    .loading-text {
+      display: block;
+      font-size: 30px;
+      font-weight: 600;
+      color: hsl(220, 25%, 10%);
+      margin-bottom: 12px;
+    }
+
+    .loading-sub {
+      display: block;
+      font-size: 24px;
+      color: hsl(215, 10%, 50%);
+    }
+  }
+
+  // ===== Result =====
+  .result {
+    .result-header {
+      margin-bottom: 20px;
+
+      .result-title {
+        font-size: 34px;
+        font-weight: 800;
+        color: hsl(220, 25%, 10%);
+      }
+    }
+
+    .result-body {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      margin-bottom: 24px;
+      // Fixed font size for all markdown content
+      font-size: 26px;
+      line-height: 1.8;
+      color: hsl(220, 20%, 20%);
+    }
+
+    .result-actions {
+      display: flex;
+      gap: 16px;
+
+      .retry-btn {
+        flex: 1;
+        padding: 24px;
+        background: #fff;
+        border: 1px solid hsl(210, 12%, 92%);
+        border-radius: 999px;
+        text-align: center;
+
+        &:active { background: hsl(210, 12%, 96%); }
+
+        .retry-text {
+          font-size: 26px;
+          font-weight: 600;
+          color: hsl(220, 25%, 10%);
+        }
+      }
+
+      .contact-btn {
+        flex: 1;
+        padding: 24px;
+        background: hsl(25, 60%, 50%);
+        border-radius: 999px;
+        text-align: center;
+
+        &:active { opacity: 0.9; }
+
+        .contact-text {
+          font-size: 26px;
+          font-weight: 600;
+          color: #fff;
+        }
+      }
+    }
+  }
+}

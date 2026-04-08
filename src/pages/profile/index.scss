@@ -1,0 +1,103 @@
+.profile-page {
+  padding: 24px 32px;
+  padding-bottom: 60px;
+
+  .field {
+    margin-bottom: 24px;
+
+    .label {
+      display: block;
+      font-size: 26px;
+      font-weight: 600;
+      color: hsl(220, 25%, 10%);
+      margin-bottom: 10px;
+    }
+
+    .picker-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      border: 1px solid hsl(210, 12%, 92%);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+
+      .picker-val {
+        font-size: 28px;
+        color: hsl(220, 25%, 10%);
+      }
+
+      .picker-ph {
+        font-size: 28px;
+        color: hsl(215, 10%, 60%);
+      }
+
+      .arrow {
+        font-size: 24px;
+        color: hsl(215, 10%, 46%);
+      }
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+
+      .tag {
+        padding: 12px 24px;
+        border-radius: 999px;
+        border: 1.5px solid hsl(210, 12%, 90%);
+        background: #fff;
+
+        &:active { opacity: 0.85; }
+
+        &.active {
+          background: hsl(217, 91%, 96%);
+          border-color: hsl(217, 91%, 75%);
+
+          .tag-text {
+            color: hsl(217, 91%, 40%);
+            font-weight: 600;
+          }
+        }
+
+        .tag-text {
+          font-size: 24px;
+          color: hsl(215, 10%, 40%);
+        }
+      }
+    }
+  }
+
+  .actions {
+    margin-top: 36px;
+
+    .save-btn {
+      width: 100%;
+      padding: 28px;
+      background: hsl(217, 91%, 55%);
+      border-radius: 999px;
+      text-align: center;
+      margin-bottom: 16px;
+
+      &:active { opacity: 0.9; }
+
+      .save-text {
+        font-size: 30px;
+        font-weight: 600;
+        color: #fff;
+      }
+    }
+
+    .skip-btn {
+      text-align: center;
+      padding: 16px;
+
+      .skip-text {
+        font-size: 26px;
+        color: hsl(215, 10%, 50%);
+      }
+    }
+  }
+}

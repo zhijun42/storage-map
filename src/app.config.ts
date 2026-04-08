@@ -4,6 +4,8 @@ export default defineAppConfig({
     'pages/itemlist/index',
     'pages/my/index',
     'pages/draw-editor/index',
+    'pages/profile/index',
+    'pages/ai-strategy/index',
     'pages/space/index',
     'pages/container/index',
     'pages/search/index',

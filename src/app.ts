@@ -12,6 +12,16 @@ function App({ children }: PropsWithChildren) {
       console.log(`[${new Date().toISOString().slice(11,23)}] Cloud initialized`)
     }
     seedMockDataIfNeeded()
+
+    // First-launch: prompt user profile
+    try {
+      const profile = Taro.getStorageSync('user_profile')
+      if (!profile) {
+        setTimeout(() => {
+          Taro.navigateTo({ url: '/pages/profile/index' })
+        }, 1000)
+      }
+    } catch {}
   }, [])
 
   return children
