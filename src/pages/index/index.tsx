@@ -29,6 +29,23 @@ export default function Index() {
 
   return (
     <View className='index-page'>
+      {/* Editor entry */}
+      <View className='editor-section'>
+        <View
+          className='editor-card-full'
+          onClick={() => Taro.navigateTo({
+            url: '/pages/draw-editor/index',
+            fail: (err) => {
+              console.error('navigateTo draw-editor failed:', err)
+              Taro.showToast({ title: '打开失败，请重试', icon: 'none' })
+            },
+          })}
+        >
+          <Text className='card-title'>空间绘制</Text>
+          <Text className='card-desc'>房间 → 家具 → 储物柜 → 立面隔间</Text>
+        </View>
+      </View>
+
       {activeSpace && activeSpace.rooms?.length > 0 && (
         <View className='floorplan-section'>
           <FloorplanView

@@ -2,6 +2,34 @@
   padding: 24px 32px;
   padding-bottom: 32px;
 
+  .editor-section {
+    margin-bottom: 24px;
+
+    .editor-card-full {
+      padding: 28px 24px;
+      background: #fff;
+      border-radius: 16px;
+      border: 1.5px solid hsl(210, 12%, 90%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+      &:active { background: hsl(210, 12%, 97%); }
+
+      .card-title {
+        display: block;
+        font-size: 30px;
+        font-weight: 700;
+        color: hsl(217, 91%, 50%);
+        margin-bottom: 8px;
+      }
+
+      .card-desc {
+        display: block;
+        font-size: 22px;
+        color: hsl(215, 10%, 50%);
+      }
+    }
+  }
+
   .floorplan-section {
     margin-bottom: 28px;
   }
