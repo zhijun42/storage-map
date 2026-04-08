@@ -8,7 +8,6 @@ function App({ children }: PropsWithChildren) {
     if (process.env.TARO_ENV === 'weapp') {
       Taro.cloud?.init({
         env: 'cloud1-1g7j9oatd5d871f3',
-        traceUser: true,
       })
       console.log(`[${new Date().toISOString().slice(11,23)}] Cloud initialized`)
     }
