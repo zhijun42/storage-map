@@ -1,7 +1,8 @@
-import { View, Text, Input, Button, Image } from '@tarojs/components'
+import { View, Text, Input, Button, Image, ScrollView } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getSpace, updateContainer, uploadPhoto, deleteContainer } from '../../services/space'
+import IsometricView from '../../components/IsometricView'
 import './index.scss'
 
 export default function ContainerPage() {
@@ -9,6 +10,7 @@ export default function ContainerPage() {
   const { spaceId = '', roomId = '', containerId = '' } = router.params
   const [container, setContainer] = useState<any>(null)
   const [saving, setSaving] = useState(false)
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
 
   useEffect(() => { loadContainer() }, [])
 
@@ -137,6 +139,16 @@ export default function ContainerPage() {
           </Text>
         </View>
         <Text className='delete-container-btn' onClick={handleDeleteContainer}>删除</Text>
+      </View>
+
+      {/* 2.5D Isometric View */}
+      <View className='isometric-section'>
+        <IsometricView
+          containerName={container.name}
+          slots={container.slots || []}
+          highlightSlotIndex={selectedSlot}
+          onSlotClick={(i) => setSelectedSlot(selectedSlot === i ? null : i)}
+        />
       </View>
 
       <View className='slots'>

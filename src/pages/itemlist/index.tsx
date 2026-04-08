@@ -1,13 +1,11 @@
 import { View, Text, Picker } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { useState, useEffect, useMemo } from 'react'
-import { getSpaces } from '../../services/space'
+import Taro, { useDidShow } from '@tarojs/taro'
+import { useState, useMemo } from 'react'
+import { getSpaces, getSpace } from '../../services/space'
 import './index.scss'
 
 interface ListItem {
   name: string
-  category: string
-  spaceName: string
   roomName: string
   containerName: string
   slotLabel: string
@@ -19,15 +17,23 @@ interface ListItem {
 export default function ItemListPage() {
   const [allItems, setAllItems] = useState<ListItem[]>([])
   const [roomFilter, setRoomFilter] = useState('全部')
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => { loadAllItems() }, [])
+  useDidShow(() => { loadAllItems() })
 
   async function loadAllItems() {
+    setLoading(true)
     const spaces = await getSpaces()
+    if (spaces.length === 0) { setLoading(false); return }
+
+    // Load all spaces in parallel
+    const fullSpaces = await Promise.all(
+      spaces.map((s: any) => getSpace(s._id))
+    )
+
     const items: ListItem[] = []
-    for (const spaceSummary of spaces) {
-      const space = await (await import('../../services/space')).getSpace(spaceSummary._id)
-      if (!space) continue
+    fullSpaces.forEach((space: any) => {
+      if (!space) return
       space.rooms?.forEach((room: any) => {
         room.containers?.forEach((container: any) => {
           container.slots?.forEach((slot: any) => {
@@ -37,8 +43,6 @@ export default function ItemListPage() {
                 if (!name) return
                 items.push({
                   name,
-                  category: container.type === 'wardrobe' ? '衣物' : container.type === 'shelf' ? '书架' : '物品',
-                  spaceName: space.name,
                   roomName: room.name,
                   containerName: container.name,
                   slotLabel: slot.label,
@@ -51,8 +55,9 @@ export default function ItemListPage() {
           })
         })
       })
-    }
+    })
     setAllItems(items)
+    setLoading(false)
   }
 
   const rooms = useMemo(() => {
@@ -86,31 +91,28 @@ export default function ItemListPage() {
         <Text className='count'>{filtered.length} 件物品</Text>
       </View>
 
-      <View className='item-list'>
-        {filtered.map((item, index) => (
-          <View key={index} className='item-card' onClick={() => handleItemClick(item)}>
-            <View className='item-icon'>
-              <Text className='icon-text'>{item.name.slice(0, 1)}</Text>
-            </View>
-            <View className='item-info'>
-              <Text className='item-name'>{item.name}</Text>
-              <Text className='item-location'>{item.roomName} · {item.containerName} · {item.slotLabel}</Text>
-            </View>
-          </View>
-        ))}
+      {loading && (
+        <View className='empty'><Text>加载中...</Text></View>
+      )}
 
-        {allItems.length === 0 && (
-          <View className='empty'>
-            <Text>加载中...</Text>
-          </View>
-        )}
-
-        {allItems.length > 0 && filtered.length === 0 && (
-          <View className='empty'>
-            <Text>暂无匹配物品</Text>
-          </View>
-        )}
-      </View>
+      {!loading && (
+        <View className='item-list'>
+          {filtered.map((item, index) => (
+            <View key={index} className='item-card' onClick={() => handleItemClick(item)}>
+              <View className='item-icon'>
+                <Text className='icon-text'>{item.name.slice(0, 1)}</Text>
+              </View>
+              <View className='item-info'>
+                <Text className='item-name'>{item.name}</Text>
+                <Text className='item-location'>{item.roomName} · {item.containerName} · {item.slotLabel}</Text>
+              </View>
+            </View>
+          ))}
+          {filtered.length === 0 && (
+            <View className='empty'><Text>暂无匹配物品</Text></View>
+          )}
+        </View>
+      )}
     </View>
   )
 }

@@ -1,6 +1,18 @@
 .search-page {
   padding: 24px 32px;
 
+  .floorplan-section {
+    margin-bottom: 20px;
+  }
+
+  .section-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: hsl(220, 25%, 10%);
+    display: block;
+    margin-bottom: 12px;
+  }
+
   .search-bar {
     margin-bottom: 20px;
 
@@ -32,6 +44,11 @@
     margin-bottom: 12px;
 
     &:active { background: hsl(210, 12%, 96%); }
+
+    &.active {
+      border: 2px solid hsl(45, 96%, 53%);
+      box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2);
+    }
 
     .result-inner {
       display: flex;

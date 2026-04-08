@@ -1,7 +1,8 @@
 import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { useState } from 'react'
-import { searchItems } from '../../services/space'
+import { useState, useEffect } from 'react'
+import { searchItems, getSpaces, getSpace } from '../../services/space'
+import FloorplanView from '../../components/FloorplanView'
 import './index.scss'
 
 function HighlightText({ text, keyword }: { text: string; keyword: string }) {
@@ -41,29 +42,61 @@ export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<any[]>([])
   const [searched, setSearched] = useState(false)
+  const [rooms, setRooms] = useState<any[]>([])
+  const [highlightContainerId, setHighlightContainerId] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadRooms()
+  }, [])
+
+  async function loadRooms() {
+    const spaces = await getSpaces()
+    if (spaces.length > 0) {
+      const space = await getSpace(spaces[0]._id)
+      if (space?.rooms) setRooms(space.rooms)
+    }
+  }
 
   async function handleSearch(value: string) {
     setQuery(value)
     if (!value.trim()) {
       setResults([])
       setSearched(false)
+      setHighlightContainerId(null)
       return
     }
     const res = await searchItems(value)
     setResults(res)
     setSearched(true)
+    setHighlightContainerId(res.length > 0 ? res[0].containerId : null)
   }
 
-  function handleNavigateToContainer(result: any) {
+  function handleResultClick(result: any) {
+    setHighlightContainerId(result.containerId)
     if (result.spaceId && result.roomId && result.containerId) {
-      Taro.navigateTo({
-        url: `/pages/container/index?spaceId=${result.spaceId}&roomId=${result.roomId}&containerId=${result.containerId}`,
-      })
+      setTimeout(() => {
+        Taro.navigateTo({
+          url: `/pages/container/index?spaceId=${result.spaceId}&roomId=${result.roomId}&containerId=${result.containerId}`,
+        })
+      }, 500)
     }
   }
 
   return (
     <View className='search-page'>
+      {/* Compact floor plan with search highlighting */}
+      {rooms.length > 0 && (
+        <View className='floorplan-section'>
+          <FloorplanView
+            rooms={rooms}
+            compact
+            highlightContainerId={highlightContainerId}
+          />
+        </View>
+      )}
+
+      <Text className='section-title'>物品查询</Text>
+
       <View className='search-bar'>
         <View className='search-input-wrap'>
           <Input
@@ -83,28 +116,30 @@ export default function SearchPage() {
         </View>
       )}
 
-      {results.map((result, index) => (
-        <View key={index} className='result-card' onClick={() => handleNavigateToContainer(result)}>
-          <View className='result-inner'>
-            <View className='result-index'>
-              <Text className='index-text'>{index + 1}</Text>
-            </View>
-            <View className='result-content'>
-              <View className='result-location'>
-                <Text className='location-container'>{result.containerName}</Text>
-                <Text className='location-sep'> · </Text>
-                <Text className='location-room'>{result.slotLabel}</Text>
+      <View className='results-list'>
+        {results.map((result, index) => (
+          <View key={index} className={`result-card ${highlightContainerId === result.containerId ? 'active' : ''}`} onClick={() => handleResultClick(result)}>
+            <View className='result-inner'>
+              <View className='result-index'>
+                <Text className='index-text'>{index + 1}</Text>
               </View>
-              <View className='result-items'>
-                <HighlightText text={result.items} keyword={query} />
+              <View className='result-content'>
+                <View className='result-location'>
+                  <Text className='location-container'>{result.containerName}</Text>
+                  <Text className='location-sep'> · </Text>
+                  <Text className='location-room'>{result.slotLabel}</Text>
+                </View>
+                <View className='result-items'>
+                  <HighlightText text={result.items} keyword={query} />
+                </View>
               </View>
-            </View>
-            <View className='result-category'>
-              <Text className='category-text'>{result.roomName}</Text>
+              <View className='result-category'>
+                <Text className='category-text'>{result.roomName}</Text>
+              </View>
             </View>
           </View>
-        </View>
-      ))}
+        ))}
+      </View>
 
       {searched && results.length === 0 && (
         <View className='empty'>
