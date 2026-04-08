@@ -62,10 +62,10 @@ export default function IsometricView({
               >
                 {isOpen && (
                   <View className='perspective-lines'>
-                    <View className='line-top' />
-                    <View className='line-left' />
-                    <View className='line-right' />
-                    <View className='line-bottom' />
+                    <View className='depth-tl' />
+                    <View className='depth-tr' />
+                    <View className='depth-bl' />
+                    <View className='depth-br' />
                   </View>
                 )}
                 {isDrawer && <View className='drawer-handle' />}

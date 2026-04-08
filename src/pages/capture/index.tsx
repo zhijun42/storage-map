@@ -1,115 +1,60 @@
-import { View, Text, Image, Input } from '@tarojs/components'
+import { View, Text, Input, Image, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { getSpaces, getSpace, addRoom, addContainer, updateContainer, uploadPhoto } from '../../services/space'
+import { getSpaces, getSpace, updateContainer, uploadPhoto } from '../../services/space'
+import { normalizeItems, serializeItems, CATEGORIES } from '../../services/items'
 import './index.scss'
 
-type Step = 'room' | 'container' | 'slot' | 'capture'
-
 export default function CapturePage() {
-  const [spaces, setSpaces] = useState<any[]>([])
   const [space, setSpace] = useState<any>(null)
-  const [step, setStep] = useState<Step>('room')
 
-  // Selected position
-  const [selectedRoom, setSelectedRoom] = useState<any>(null)
-  const [selectedContainer, setSelectedContainer] = useState<any>(null)
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number>(0)
-
-  // Capture state
+  // Form fields
+  const [name, setName] = useState('')
+  const [categoryIndex, setCategoryIndex] = useState(-1)
+  const [price, setPrice] = useState('')
+  const [notes, setNotes] = useState('')
   const [photoPath, setPhotoPath] = useState('')
-  const [itemsText, setItemsText] = useState('')
+
+  // Location selection
+  const [rooms, setRooms] = useState<any[]>([])
+  const [selectedRoomIndex, setSelectedRoomIndex] = useState(-1)
+  const [containers, setContainers] = useState<any[]>([])
+  const [selectedContainerIndex, setSelectedContainerIndex] = useState(-1)
+  const [slotLabels, setSlotLabels] = useState<string[]>([])
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(-1)
+
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
+
+  const today = new Date().toISOString().slice(0, 10)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     const list = await getSpaces()
-    setSpaces(list)
     if (list.length > 0) {
       const full = await getSpace(list[0]._id)
       setSpace(full)
-    }
-  }
-
-  async function handleSelectRoom(room: any) {
-    setSelectedRoom(room)
-    setSelectedContainer(null)
-    setSelectedSlotIndex(0)
-    setStep('container')
-  }
-
-  async function handleNewRoom() {
-    if (!space) return
-    const res = await Taro.showModal({
-      title: '新建房间',
-      editable: true,
-      placeholderText: '房间名称',
-    } as any)
-    if (res.confirm && (res as any).content) {
-      await addRoom(space._id, (res as any).content)
-      const full = await getSpace(space._id)
-      setSpace(full)
-    }
-  }
-
-  async function handleSelectContainer(container: any) {
-    setSelectedContainer(container)
-    setSelectedSlotIndex(0)
-    setStep('slot')
-  }
-
-  async function handleNewContainer() {
-    if (!space || !selectedRoom) return
-    const res = await Taro.showModal({
-      title: '新建容器',
-      editable: true,
-      placeholderText: '容器名称（如：衣柜、书架）',
-    } as any)
-    if (res.confirm && (res as any).content) {
-      await addContainer(space._id, selectedRoom._id, {
-        name: (res as any).content,
-        type: 'custom',
-        movable: false,
-        slots: [{ label: '第1层', type: 'shelf', items: '', photo: '' }],
-      })
-      const full = await getSpace(space._id)
-      setSpace(full)
-      const updatedRoom = full?.rooms?.find((r: any) => r._id === selectedRoom._id)
-      if (updatedRoom) setSelectedRoom(updatedRoom)
-    }
-  }
-
-  function handleSelectSlot(index: number) {
-    setSelectedSlotIndex(index)
-    setStep('capture')
-    setPhotoPath('')
-    setItemsText('')
-  }
-
-  async function handleNewSlot() {
-    if (!space || !selectedRoom || !selectedContainer) return
-    const res = await Taro.showModal({
-      title: '新建分层',
-      editable: true,
-      placeholderText: '分层名称（如：第2层、上层）',
-    } as any)
-    if (res.confirm && (res as any).content) {
-      const updatedSlots = [
-        ...selectedContainer.slots,
-        { label: (res as any).content, type: 'shelf', items: '', photo: '' },
-      ]
-      await updateContainer(space._id, selectedRoom._id, selectedContainer._id, { slots: updatedSlots })
-      const full = await getSpace(space._id)
-      setSpace(full)
-      const updatedRoom = full?.rooms?.find((r: any) => r._id === selectedRoom._id)
-      if (updatedRoom) {
-        setSelectedRoom(updatedRoom)
-        const updatedC = updatedRoom.containers?.find((c: any) => c._id === selectedContainer._id)
-        if (updatedC) setSelectedContainer(updatedC)
+      if (full?.rooms) {
+        setRooms(full.rooms)
       }
     }
+  }
+
+  function handleRoomChange(index: number) {
+    setSelectedRoomIndex(index)
+    setSelectedContainerIndex(-1)
+    setSelectedSlotIndex(-1)
+    const room = rooms[index]
+    setContainers(room?.containers || [])
+    setSlotLabels([])
+  }
+
+  function handleContainerChange(index: number) {
+    setSelectedContainerIndex(index)
+    setSelectedSlotIndex(-1)
+    const container = containers[index]
+    setSlotLabels(container?.slots?.map((s: any) => s.label) || [])
   }
 
   async function handleTakePhoto() {
@@ -123,194 +68,152 @@ export default function CapturePage() {
       if (res.tempFiles?.length > 0) {
         setPhotoPath(res.tempFiles[0].tempFilePath)
       }
-    } catch {
-      // cancelled
-    }
+    } catch {}
   }
 
   async function handleSave() {
-    if (!space || !selectedRoom || !selectedContainer) return
-    setSaving(true)
-
-    const updatedSlots = [...selectedContainer.slots]
-    const slot = updatedSlots[selectedSlotIndex]
-
-    // Append items
-    if (itemsText.trim()) {
-      slot.items = slot.items
-        ? `${slot.items}、${itemsText.trim()}`
-        : itemsText.trim()
+    if (!name.trim()) { Taro.showToast({ title: '请输入物品名称', icon: 'none' }); return }
+    if (categoryIndex < 0) { Taro.showToast({ title: '请选择物品类型', icon: 'none' }); return }
+    if (selectedRoomIndex < 0 || selectedContainerIndex < 0 || selectedSlotIndex < 0) {
+      Taro.showToast({ title: '请选择存放位置', icon: 'none' }); return
     }
 
-    // Upload photo
+    setSaving(true)
+    const room = rooms[selectedRoomIndex]
+    const container = containers[selectedContainerIndex]
+
+    let uploadedPhoto = ''
     if (photoPath) {
       Taro.showLoading({ title: '上传照片...' })
-      const cloudUrl = await uploadPhoto(photoPath, selectedContainer._id, selectedSlotIndex)
+      uploadedPhoto = await uploadPhoto(photoPath, container._id, selectedSlotIndex)
       Taro.hideLoading()
-      slot.photo = cloudUrl
     }
 
-    updatedSlots[selectedSlotIndex] = slot
-    await updateContainer(space._id, selectedRoom._id, selectedContainer._id, { slots: updatedSlots })
-
-    // Refresh data
-    const full = await getSpace(space._id)
-    setSpace(full)
-    const updatedRoom = full?.rooms?.find((r: any) => r._id === selectedRoom._id)
-    if (updatedRoom) {
-      setSelectedRoom(updatedRoom)
-      const updatedC = updatedRoom.containers?.find((c: any) => c._id === selectedContainer._id)
-      if (updatedC) setSelectedContainer(updatedC)
-    }
+    const updatedSlots = [...container.slots]
+    const items = normalizeItems(updatedSlots[selectedSlotIndex].items)
+    items.push({
+      name: name.trim(),
+      category: CATEGORIES[categoryIndex],
+      price: price.trim() || '',
+      createdAt: today,
+      photo: uploadedPhoto,
+      notes: notes.trim(),
+    })
+    updatedSlots[selectedSlotIndex] = { ...updatedSlots[selectedSlotIndex], items: serializeItems(items) }
+    await updateContainer(space._id, room._id, container._id, { slots: updatedSlots })
 
     setSaving(false)
     setSavedCount(savedCount + 1)
+
+    // Reset form but keep location
+    setName('')
+    setPrice('')
+    setNotes('')
     setPhotoPath('')
-    setItemsText('')
+    setCategoryIndex(-1)
 
-    Taro.showToast({
-      title: '已保存',
-      icon: 'success',
-      duration: 1500,
-    })
+    Taro.showToast({ title: '已保存', icon: 'success' })
   }
-
-  // Breadcrumb
-  const breadcrumb = [
-    selectedRoom?.name,
-    selectedContainer?.name,
-    selectedContainer?.slots?.[selectedSlotIndex]?.label,
-  ].filter(Boolean).join(' > ')
 
   return (
     <View className='capture-page'>
-      {/* Breadcrumb */}
-      {breadcrumb && (
-        <View className='breadcrumb' onClick={() => setStep('room')}>
-          <Text className='breadcrumb-text'>{breadcrumb}</Text>
-          <Text className='breadcrumb-change'>切换</Text>
+      <View className='form'>
+        {/* Name */}
+        <View className='field'>
+          <Text className='label'>物品名称 *</Text>
+          <View className='input-wrap'>
+            <Input className='field-input' placeholder='请输入名称' value={name} onInput={e => setName(e.detail.value)} />
+          </View>
         </View>
-      )}
 
-      {/* Step: Select Room */}
-      {step === 'room' && (
-        <View className='step-section'>
-          <Text className='step-title'>选择房间</Text>
-          <View className='option-list'>
-            {space?.rooms?.map((room: any) => (
-              <View
-                key={room._id}
-                className={`option-item ${selectedRoom?._id === room._id ? 'active' : ''}`}
-                onClick={() => handleSelectRoom(room)}
-              >
-                <Text className='option-name'>{room.name}</Text>
-                <Text className='option-info'>{room.containers?.length || 0} 个容器</Text>
-              </View>
-            ))}
-            <View className='option-item add' onClick={handleNewRoom}>
-              <Text className='option-name'>+ 新建房间</Text>
+        {/* Category */}
+        <View className='field'>
+          <Text className='label'>物品类型 *</Text>
+          <Picker mode='selector' range={CATEGORIES} onChange={e => setCategoryIndex(Number(e.detail.value))}>
+            <View className='picker-wrap'>
+              <Text className={categoryIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
+                {categoryIndex >= 0 ? CATEGORIES[categoryIndex] : '请选择类型'}
+              </Text>
+              <Text className='picker-arrow'>▾</Text>
             </View>
+          </Picker>
+        </View>
+
+        {/* Price */}
+        <View className='field'>
+          <Text className='label'>价格（选填）</Text>
+          <View className='input-wrap'>
+            <Input className='field-input' type='digit' placeholder='¥' value={price} onInput={e => setPrice(e.detail.value)} />
           </View>
         </View>
-      )}
 
-      {/* Step: Select Container */}
-      {step === 'container' && (
-        <View className='step-section'>
-          <Text className='step-title'>选择容器</Text>
-          <View className='option-list'>
-            {selectedRoom?.containers?.map((container: any) => (
-              <View
-                key={container._id}
-                className={`option-item ${selectedContainer?._id === container._id ? 'active' : ''}`}
-                onClick={() => handleSelectContainer(container)}
-              >
-                <Text className='option-name'>{container.name}</Text>
-                <Text className='option-info'>{container.slots?.length || 0} 层</Text>
-              </View>
-            ))}
-            <View className='option-item add' onClick={handleNewContainer}>
-              <Text className='option-name'>+ 新建容器</Text>
-            </View>
-          </View>
-          <View className='nav-back' onClick={() => setStep('room')}>
-            <Text className='nav-back-text'>← 返回选择房间</Text>
+        {/* Date */}
+        <View className='field'>
+          <Text className='label'>录入日期</Text>
+          <View className='input-wrap readonly'>
+            <Text className='field-value'>{today}</Text>
           </View>
         </View>
-      )}
 
-      {/* Step: Select Slot */}
-      {step === 'slot' && (
-        <View className='step-section'>
-          <Text className='step-title'>选择分层</Text>
-          <View className='option-list'>
-            {selectedContainer?.slots?.map((slot: any, i: number) => (
-              <View
-                key={i}
-                className={`option-item ${selectedSlotIndex === i && step === 'slot' ? 'active' : ''}`}
-                onClick={() => handleSelectSlot(i)}
-              >
-                <Text className='option-name'>{slot.label}</Text>
-                <Text className='option-info'>{slot.items ? '有物品' : '空'}</Text>
-              </View>
-            ))}
-            <View className='option-item add' onClick={handleNewSlot}>
-              <Text className='option-name'>+ 新建分层</Text>
-            </View>
-          </View>
-          <View className='nav-back' onClick={() => setStep('container')}>
-            <Text className='nav-back-text'>← 返回选择容器</Text>
+        {/* Notes */}
+        <View className='field'>
+          <Text className='label'>备注（选填）</Text>
+          <View className='input-wrap'>
+            <Input className='field-input' placeholder='如：户外专用' value={notes} onInput={e => setNotes(e.detail.value)} />
           </View>
         </View>
-      )}
 
-      {/* Step: Capture */}
-      {step === 'capture' && (
-        <View className='capture-section'>
-          {/* Photo area */}
+        {/* Photo */}
+        <View className='field'>
+          <Text className='label'>照片（选填）</Text>
           <View className='photo-area' onClick={handleTakePhoto}>
             {photoPath ? (
               <Image className='photo-preview' src={photoPath} mode='aspectFill' />
             ) : (
               <View className='photo-placeholder'>
-                <Text className='camera-icon'>📷</Text>
-                <Text className='photo-hint'>点击拍照</Text>
+                <Text className='camera-text'>点击拍照或选择图片</Text>
               </View>
             )}
           </View>
+        </View>
 
-          {/* Items input */}
-          <View className='input-section'>
-            <Text className='input-label'>物品描述</Text>
-            <View className='input-wrap'>
-              <Input
-                className='items-input'
-                placeholder='输入物品（如：T恤×15、短裤×8）'
-                value={itemsText}
-                onInput={(e) => setItemsText(e.detail.value)}
-                adjustPosition
-              />
-            </View>
-          </View>
-
-          {/* Save button */}
-          <View
-            className={`save-btn ${(!photoPath && !itemsText.trim()) ? 'disabled' : ''}`}
-            onClick={handleSave}
-          >
-            <Text className='save-btn-text'>{saving ? '保存中...' : '保存'}</Text>
-          </View>
-
-          {/* Quick nav */}
-          <View className='quick-nav'>
-            <View className='nav-back' onClick={() => setStep('slot')}>
-              <Text className='nav-back-text'>← 切换分层</Text>
-            </View>
-            {savedCount > 0 && (
-              <Text className='saved-count'>本次已保存 {savedCount} 条</Text>
-            )}
+        {/* Location selection */}
+        <View className='field'>
+          <Text className='label'>存放位置 *</Text>
+          <View className='location-pickers'>
+            <Picker mode='selector' range={rooms.map((r: any) => r.name)} onChange={e => handleRoomChange(Number(e.detail.value))}>
+              <View className='picker-wrap small'>
+                <Text className={selectedRoomIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
+                  {selectedRoomIndex >= 0 ? rooms[selectedRoomIndex].name : '房间'}
+                </Text>
+              </View>
+            </Picker>
+            <Text className='sep'>›</Text>
+            <Picker mode='selector' range={containers.map((c: any) => c.name)} onChange={e => handleContainerChange(Number(e.detail.value))}>
+              <View className='picker-wrap small'>
+                <Text className={selectedContainerIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
+                  {selectedContainerIndex >= 0 ? containers[selectedContainerIndex].name : '容器'}
+                </Text>
+              </View>
+            </Picker>
+            <Text className='sep'>›</Text>
+            <Picker mode='selector' range={slotLabels} onChange={e => setSelectedSlotIndex(Number(e.detail.value))}>
+              <View className='picker-wrap small'>
+                <Text className={selectedSlotIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
+                  {selectedSlotIndex >= 0 ? slotLabels[selectedSlotIndex] : '分层'}
+                </Text>
+              </View>
+            </Picker>
           </View>
         </View>
+      </View>
+
+      <View className={`save-btn ${saving ? 'disabled' : ''}`} onClick={handleSave}>
+        <Text className='save-btn-text'>{saving ? '保存中...' : '录入物品'}</Text>
+      </View>
+
+      {savedCount > 0 && (
+        <Text className='saved-count'>本次已录入 {savedCount} 件物品</Text>
       )}
     </View>
   )

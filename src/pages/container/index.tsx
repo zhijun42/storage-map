@@ -8,10 +8,11 @@ import './index.scss'
 
 export default function ContainerPage() {
   const router = useRouter()
-  const { spaceId = '', roomId = '', containerId = '' } = router.params
+  const { spaceId = '', roomId = '', containerId = '', searchQuery = '', highlightSlot = '' } = router.params
   const [container, setContainer] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
+  const decodedQuery = searchQuery ? decodeURIComponent(searchQuery) : ''
 
   useEffect(() => { loadContainer() }, [])
   useDidShow(() => { loadContainer() })
@@ -23,6 +24,11 @@ export default function ContainerPage() {
     if (!room) return
     const c = room.containers?.find((c: any) => c._id === containerId)
     setContainer(c || null)
+    // Auto-select slot from search highlight
+    if (highlightSlot && c?.slots) {
+      const idx = c.slots.findIndex((s: any) => s.label === highlightSlot)
+      if (idx >= 0) setSelectedSlot(idx)
+    }
   }
 
   async function saveSlots(updatedSlots: any[]) {
@@ -151,6 +157,7 @@ export default function ContainerPage() {
 
       <View className='slots'>
         {container.slots?.map((slot: any, slotIndex: number) => {
+          if (selectedSlot !== null && selectedSlot !== slotIndex) return null
           const items = normalizeItems(slot.items)
           return (
             <View key={slotIndex} className='slot-card'>
@@ -161,8 +168,10 @@ export default function ContainerPage() {
 
               {/* Item cards */}
               <View className='item-list'>
-                {items.map((item: Item, itemIndex: number) => (
-                  <View key={itemIndex} className='item-card'>
+                {items.map((item: Item, itemIndex: number) => {
+                  const isSearchMatch = decodedQuery && item.name.toLowerCase().includes(decodedQuery.toLowerCase())
+                  return (
+                  <View key={itemIndex} className={`item-card ${isSearchMatch ? 'search-highlight' : ''}`}>
                     {item.photo ? (
                       <Image className='item-photo' src={item.photo} mode='aspectFill' onClick={() => handleItemPhoto(slotIndex, itemIndex)} />
                     ) : (
@@ -181,7 +190,7 @@ export default function ContainerPage() {
                     </View>
                     <Text className='item-delete' onClick={() => handleDeleteItem(slotIndex, itemIndex)}>×</Text>
                   </View>
-                ))}
+                  )})}
               </View>
 
               {/* Add item button */}

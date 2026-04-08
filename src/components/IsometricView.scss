@@ -104,52 +104,62 @@ $border-color: hsl(220, 20%, 25%);
     box-shadow: inset 3px 3px 0 0 hsl(210, 6%, 80%), inset -3px -3px 0 0 hsl(210, 6%, 80%);
   }
 
-  // Open shelf — inner perspective lines (thin gray)
+  // Open shelf — inner recessed rectangle showing depth
   &.open {
     background: #fff;
 
     .perspective-lines {
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 6px;
+      left: 6px;
+      right: 6px;
+      bottom: 6px;
+      border: 1px solid hsl(210, 6%, 82%);
       pointer-events: none;
 
-      .line-top {
+      // Top-left diagonal depth line
+      .depth-tl {
         position: absolute;
-        top: 3px;
-        left: 4px;
-        right: 4px;
-        height: 0;
-        border-top: 1px solid hsl(210, 6%, 82%);
+        top: -6px;
+        left: -6px;
+        width: 8px;
+        height: 8px;
+        border-bottom: 1px solid hsl(210, 6%, 80%);
+        border-right: 1px solid hsl(210, 6%, 80%);
+        transform: skew(0deg);
       }
 
-      .line-left {
+      // Top-right diagonal depth line
+      .depth-tr {
         position: absolute;
-        top: 4px;
-        left: 3px;
-        bottom: 4px;
-        width: 0;
-        border-left: 1px solid hsl(210, 6%, 82%);
+        top: -6px;
+        right: -6px;
+        width: 8px;
+        height: 8px;
+        border-bottom: 1px solid hsl(210, 6%, 80%);
+        border-left: 1px solid hsl(210, 6%, 80%);
       }
 
-      .line-right {
+      // Bottom-left diagonal depth line
+      .depth-bl {
         position: absolute;
-        top: 4px;
-        right: 3px;
-        bottom: 4px;
-        width: 0;
-        border-right: 1px solid hsl(210, 6%, 82%);
+        bottom: -6px;
+        left: -6px;
+        width: 8px;
+        height: 8px;
+        border-top: 1px solid hsl(210, 6%, 80%);
+        border-right: 1px solid hsl(210, 6%, 80%);
       }
 
-      .line-bottom {
+      // Bottom-right diagonal depth line
+      .depth-br {
         position: absolute;
-        bottom: 3px;
-        left: 4px;
-        right: 4px;
-        height: 0;
-        border-bottom: 1px solid hsl(210, 6%, 82%);
+        bottom: -6px;
+        right: -6px;
+        width: 8px;
+        height: 8px;
+        border-top: 1px solid hsl(210, 6%, 80%);
+        border-left: 1px solid hsl(210, 6%, 80%);
       }
     }
   }

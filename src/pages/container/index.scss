@@ -55,6 +55,11 @@
     background: hsl(210, 12%, 97%);
     border-radius: 12px;
 
+    &.search-highlight {
+      background: hsl(45, 100%, 93%);
+      border: 2px solid hsl(45, 96%, 53%);
+    }
+
     .item-photo {
       width: 72px;
       height: 72px;

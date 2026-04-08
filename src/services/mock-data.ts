@@ -6,7 +6,7 @@
 import Taro from '@tarojs/taro'
 import { getSpaces, deleteSpace, addRoom, addContainer } from './space'
 
-const MOCK_SEEDED_KEY = 'mock_data_seeded_v5'
+const MOCK_SEEDED_KEY = 'mock_data_seeded_v6'
 
 export async function seedMockDataIfNeeded() {
   try {
@@ -50,8 +50,8 @@ export async function seedMockDataIfNeeded() {
   }
 }
 
-function item(name: string, category: string, price: number | string = '') {
-  return { name, category, price, createdAt: '2026-04-08', photo: '', notes: '' }
+function item(name: string, category: string, price: number | string = '', notes: string = '') {
+  return { name, category, price, createdAt: '2026-04-08', photo: '', notes }
 }
 
 async function seedDongbaoData(spaceId: string) {
@@ -79,8 +79,8 @@ async function seedDongbaoData(spaceId: string) {
     await addContainer(spaceId, String(bedroom._id), {
       name: '床头柜', type: 'cabinet', movable: true,
       slots: [
-        { label: '台面', type: 'shelf', items: [item('台灯', '家居'), item('Kindle阅读器', '数码产品')], photo: '' },
-        { label: '抽屉', type: 'drawer', items: [item('护照', '证件'), item('身份证复印件', '证件'), item('常备药品', '医用品'), item('耳塞', '日用品'), item('眼罩', '日用品')], photo: '' },
+        { label: '台面', type: 'shelf', items: [item('台灯', '家居', 299, '宜家购入'), item('Kindle阅读器', '数码产品', 999, '保修至2028年')], photo: '' },
+        { label: '抽屉', type: 'drawer', items: [item('护照', '证件', '', '有效期至2029年'), item('身份证复印件', '证件'), item('常备药品', '医用品', '', '含布洛芬、创可贴'), item('耳塞', '日用品', 59), item('眼罩', '日用品', 39)], photo: '' },
       ],
     })
   }
@@ -90,8 +90,8 @@ async function seedDongbaoData(spaceId: string) {
     await addContainer(spaceId, String(livingRoom._id), {
       name: '电视柜', type: 'cabinet', movable: false,
       slots: [
-        { label: '台面', type: 'shelf', items: [item('PS5游戏机', '数码产品'), item('路由器', '数码产品'), item('蓝牙音箱', '数码产品')], photo: '' },
-        { label: '左柜', type: 'shelf', items: [item('PS5手柄', '数码产品'), item('Switch', '数码产品'), item('Switch游戏卡', '数码产品')], photo: '' },
+        { label: '台面', type: 'shelf', items: [item('PS5游戏机', '数码产品', 3899), item('路由器', '数码产品', 399, '华为AX3 Pro'), item('蓝牙音箱', '数码产品', 599, 'JBL Flip 5')], photo: '' },
+        { label: '左柜', type: 'shelf', items: [item('PS5手柄', '数码产品', 520), item('Switch', '数码产品', 2099), item('Switch游戏卡', '数码产品', '', '12张')], photo: '' },
         { label: '右柜', type: 'drawer', items: [item('遥控器', '数码产品'), item('充电线套装', '数码产品'), item('HDMI线', '数码产品')], photo: '' },
       ],
     })
@@ -128,8 +128,8 @@ async function seedDongbaoData(spaceId: string) {
     await addContainer(spaceId, String(secondBedroom._id), {
       name: '书柜', type: 'shelf', movable: false,
       slots: [
-        { label: '第1层', type: 'shelf', items: [item('富士X-T5相机', '数码产品'), item('XF35mm镜头', '数码产品'), item('Peak Design背带', '数码产品')], photo: '' },
-        { label: '第2层', type: 'shelf', items: [item('哈利波特乐高', '收藏'), item('星球大战手办', '收藏')], photo: '' },
+        { label: '第1层', type: 'shelf', items: [item('富士X-T5相机', '数码产品', 12900, '保修至2027年'), item('XF35mm镜头', '数码产品', 4590), item('Peak Design背带', '数码产品', 520)], photo: '' },
+        { label: '第2层', type: 'shelf', items: [item('哈利波特乐高', '收藏', 2499, '已拼好'), item('星球大战手办', '收藏', 899)], photo: '' },
         { label: '第3层', type: 'shelf', items: [item('家庭药箱', '医用品'), item('温度计', '医用品'), item('创可贴', '医用品')], photo: '' },
         { label: '第4层', type: 'open', items: [item('行李箱28寸', '出行'), item('双肩背包', '出行')], photo: '' },
       ],

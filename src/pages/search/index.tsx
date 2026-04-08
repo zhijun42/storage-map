@@ -76,7 +76,7 @@ export default function SearchPage() {
     if (result.spaceId && result.roomId && result.containerId) {
       setTimeout(() => {
         Taro.navigateTo({
-          url: `/pages/container/index?spaceId=${result.spaceId}&roomId=${result.roomId}&containerId=${result.containerId}`,
+          url: `/pages/container/index?spaceId=${result.spaceId}&roomId=${result.roomId}&containerId=${result.containerId}&searchQuery=${encodeURIComponent(query)}&highlightSlot=${result.slotLabel}`,
         })
       }, 500)
     }
