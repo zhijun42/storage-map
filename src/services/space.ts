@@ -10,6 +10,7 @@
 
 import Taro from '@tarojs/taro'
 import * as cloudService from './cloud'
+import { normalizeItems } from './items'
 
 // 检测是否在小程序环境且云开发可用
 let cloudAvailable: boolean | null = null
@@ -184,7 +185,9 @@ export async function searchItems(query: string) {
     space.rooms?.forEach((room: any) => {
       room.containers?.forEach((container: any) => {
         container.slots?.forEach((slot: any) => {
-          if (slot.items && slot.items.toLowerCase().includes(q)) {
+          const items = normalizeItems(slot.items)
+          const matchedItems = items.filter(i => i.name.toLowerCase().includes(q))
+          if (matchedItems.length > 0) {
             results.push({
               spaceId: space._id,
               roomId: room._id,
@@ -193,27 +196,9 @@ export async function searchItems(query: string) {
               roomName: room.name,
               containerName: container.name,
               slotLabel: slot.label,
-              items: slot.items,
-              photo: slot.photo,
+              items: matchedItems.map(i => i.name).join('、'),
             })
           }
-        })
-        container.children?.forEach((child: any) => {
-          child.slots?.forEach((slot: any) => {
-            if (slot.items && slot.items.toLowerCase().includes(q)) {
-              results.push({
-                spaceId: space._id,
-                roomId: room._id,
-                containerId: child._id,
-                spaceName: space.name,
-                roomName: room.name,
-                containerName: `${container.name} > ${child.name}`,
-                slotLabel: slot.label,
-                items: slot.items,
-                photo: slot.photo,
-              })
-            }
-          })
         })
       })
     })

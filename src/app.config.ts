@@ -6,6 +6,7 @@ export default defineAppConfig({
     'pages/space/index',
     'pages/container/index',
     'pages/search/index',
+    'pages/capture/index',
   ],
   tabBar: {
     color: '#69727d',

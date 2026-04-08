@@ -1,7 +1,8 @@
-import { View, Text, Input, Button, Image, ScrollView } from '@tarojs/components'
+import { View, Text, Input, Button, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { getSpace, updateContainer, uploadPhoto, deleteContainer } from '../../services/space'
+import { normalizeItems, serializeItems, Item } from '../../services/items'
 import IsometricView from '../../components/IsometricView'
 import './index.scss'
 
@@ -30,22 +31,87 @@ export default function ContainerPage() {
     setSaving(false)
   }
 
-  async function handleUpdateSlotItems(slotIndex: number, items: string) {
-    if (!container) return
-    const updatedSlots = [...container.slots]
-    updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items }
-    await saveSlots(updatedSlots)
+  // Item operations
+  async function handleAddItem(slotIndex: number) {
+    const res = await Taro.showModal({
+      title: '添加物品',
+      editable: true,
+      placeholderText: '物品名称',
+    } as any)
+    if (res.confirm && (res as any).content) {
+      const updatedSlots = [...container.slots]
+      const items = normalizeItems(updatedSlots[slotIndex].items)
+      items.push({ name: (res as any).content, photo: '', notes: '' })
+      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(items) }
+      await saveSlots(updatedSlots)
+    }
   }
 
+  async function handleEditItem(slotIndex: number, itemIndex: number) {
+    const items = normalizeItems(container.slots[slotIndex].items)
+    const item = items[itemIndex]
+    const res = await Taro.showModal({
+      title: '编辑物品',
+      editable: true,
+      placeholderText: item.name,
+    } as any)
+    if (res.confirm && (res as any).content) {
+      const updatedSlots = [...container.slots]
+      const updatedItems = normalizeItems(updatedSlots[slotIndex].items)
+      updatedItems[itemIndex] = { ...updatedItems[itemIndex], name: (res as any).content }
+      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(updatedItems) }
+      await saveSlots(updatedSlots)
+    }
+  }
+
+  async function handleDeleteItem(slotIndex: number, itemIndex: number) {
+    const items = normalizeItems(container.slots[slotIndex].items)
+    const res = await Taro.showModal({
+      title: '删除物品',
+      content: `确认删除「${items[itemIndex].name}」？`,
+    })
+    if (res.confirm) {
+      const updatedSlots = [...container.slots]
+      const updatedItems = normalizeItems(updatedSlots[slotIndex].items)
+      updatedItems.splice(itemIndex, 1)
+      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(updatedItems) }
+      await saveSlots(updatedSlots)
+    }
+  }
+
+  async function handleItemPhoto(slotIndex: number, itemIndex: number) {
+    try {
+      const res = await Taro.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['camera', 'album'],
+        sizeType: ['compressed'],
+      })
+      if (res.tempFiles?.length > 0) {
+        Taro.showLoading({ title: '上传中...' })
+        const cloudUrl = await uploadPhoto(res.tempFiles[0].tempFilePath, containerId, slotIndex)
+        Taro.hideLoading()
+        const updatedSlots = [...container.slots]
+        const updatedItems = normalizeItems(updatedSlots[slotIndex].items)
+        updatedItems[itemIndex] = { ...updatedItems[itemIndex], photo: cloudUrl }
+        updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(updatedItems) }
+        await saveSlots(updatedSlots)
+      }
+    } catch {
+      Taro.hideLoading()
+    }
+  }
+
+  // Slot operations
   async function handleAddSlot() {
     if (!container) return
     const res = await Taro.showModal({
       title: '添加分层',
       editable: true,
-      placeholderText: '分层名称（如：第2层、上层抽屉）',
+      placeholderText: '分层名称',
     } as any)
     if (res.confirm && (res as any).content) {
-      const updatedSlots = [...container.slots, { label: (res as any).content, type: 'shelf', items: '', photo: '' }]
+      const updatedSlots = [...container.slots, { label: (res as any).content, type: 'shelf', items: [], photo: '' }]
       await saveSlots(updatedSlots)
     }
   }
@@ -65,61 +131,14 @@ export default function ContainerPage() {
     }
   }
 
-  async function handleMoveSlot(slotIndex: number, direction: 'up' | 'down') {
-    if (!container) return
-    const targetIndex = direction === 'up' ? slotIndex - 1 : slotIndex + 1
-    if (targetIndex < 0 || targetIndex >= container.slots.length) return
-    const updatedSlots = [...container.slots]
-    const temp = updatedSlots[slotIndex]
-    updatedSlots[slotIndex] = updatedSlots[targetIndex]
-    updatedSlots[targetIndex] = temp
-    await saveSlots(updatedSlots)
-  }
-
-  async function handleTakePhoto(slotIndex: number) {
-    try {
-      const res = await Taro.chooseMedia({
-        count: 1,
-        mediaType: ['image'],
-        sourceType: ['camera', 'album'],
-        sizeType: ['compressed'],
-      })
-      if (res.tempFiles?.length > 0) {
-        const photoPath = res.tempFiles[0].tempFilePath
-        Taro.showLoading({ title: '上传中...' })
-        const cloudUrl = await uploadPhoto(photoPath, containerId, slotIndex)
-        Taro.hideLoading()
-        const updatedSlots = [...container.slots]
-        updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], photo: cloudUrl }
-        await saveSlots(updatedSlots)
-      }
-    } catch (e) {
-      Taro.hideLoading()
-      console.log('取消拍照')
-    }
-  }
-
   async function handleDeleteContainer() {
     const res = await Taro.showModal({
       title: '删除容器',
-      content: `确认删除「${container.name}」及其所有分层数据？`,
+      content: `确认删除「${container.name}」及其所有数据？`,
     })
     if (res.confirm) {
       await deleteContainer(spaceId, roomId, containerId)
       Taro.navigateBack()
-    }
-  }
-
-  async function handleRenameSlot(slotIndex: number) {
-    const res = await Taro.showModal({
-      title: '重命名分层',
-      editable: true,
-      placeholderText: container.slots[slotIndex].label,
-    } as any)
-    if (res.confirm && (res as any).content) {
-      const updatedSlots = [...container.slots]
-      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], label: (res as any).content }
-      await saveSlots(updatedSlots)
     }
   }
 
@@ -134,14 +153,12 @@ export default function ContainerPage() {
             {container.type === 'wardrobe' ? '衣柜' :
              container.type === 'cabinet' ? '柜子' :
              container.type === 'shelf' ? '书架' : '容器'}
-            {container.movable ? ' · 可移动' : ''}
             {saving ? ' · 保存中...' : ''}
           </Text>
         </View>
         <Text className='delete-container-btn' onClick={handleDeleteContainer}>删除</Text>
       </View>
 
-      {/* 2.5D Isometric View */}
       <View className='isometric-section'>
         <IsometricView
           containerName={container.name}
@@ -152,39 +169,42 @@ export default function ContainerPage() {
       </View>
 
       <View className='slots'>
-        {container.slots?.map((slot: any, index: number) => (
-          <View key={index} className='slot-card'>
-            <View className='slot-header'>
-              <Text className='slot-label' onClick={() => handleRenameSlot(index)}>{slot.label}</Text>
-              <View className='slot-actions'>
-                {index > 0 && (
-                  <Text className='action-btn' onClick={() => handleMoveSlot(index, 'up')}>↑</Text>
-                )}
-                {index < container.slots.length - 1 && (
-                  <Text className='action-btn' onClick={() => handleMoveSlot(index, 'down')}>↓</Text>
-                )}
-                <Text className='action-btn photo' onClick={() => handleTakePhoto(index)}>
-                  {slot.photo ? '换图' : '拍照'}
-                </Text>
-                <Text className='action-btn delete' onClick={() => handleDeleteSlot(index)}>删除</Text>
+        {container.slots?.map((slot: any, slotIndex: number) => {
+          const items = normalizeItems(slot.items)
+          return (
+            <View key={slotIndex} className='slot-card'>
+              <View className='slot-header'>
+                <Text className='slot-label'>{slot.label}</Text>
+                <Text className='action-btn delete' onClick={() => handleDeleteSlot(slotIndex)}>删除层</Text>
+              </View>
+
+              {/* Item cards */}
+              <View className='item-list'>
+                {items.map((item: Item, itemIndex: number) => (
+                  <View key={itemIndex} className='item-card'>
+                    {item.photo ? (
+                      <Image className='item-photo' src={item.photo} mode='aspectFill' onClick={() => handleItemPhoto(slotIndex, itemIndex)} />
+                    ) : (
+                      <View className='item-photo-placeholder' onClick={() => handleItemPhoto(slotIndex, itemIndex)}>
+                        <Text className='photo-icon'>📷</Text>
+                      </View>
+                    )}
+                    <View className='item-info'>
+                      <Text className='item-name' onClick={() => handleEditItem(slotIndex, itemIndex)}>{item.name}</Text>
+                      {item.notes && <Text className='item-notes'>{item.notes}</Text>}
+                    </View>
+                    <Text className='item-delete' onClick={() => handleDeleteItem(slotIndex, itemIndex)}>×</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Add item button */}
+              <View className='add-item-btn' onClick={() => handleAddItem(slotIndex)}>
+                <Text className='add-item-text'>+ 添加物品</Text>
               </View>
             </View>
-
-            {slot.photo && (
-              <Image className='slot-photo' src={slot.photo} mode='aspectFill' />
-            )}
-
-            <View className='slot-input-wrap'>
-              <Input
-                className='slot-input'
-                placeholder='输入物品'
-                value={slot.items}
-                onBlur={(e) => handleUpdateSlotItems(index, e.detail.value)}
-                adjustPosition
-              />
-            </View>
-          </View>
-        ))}
+          )
+        })}
       </View>
 
       <Button className='add-slot-btn' onClick={handleAddSlot}>

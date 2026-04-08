@@ -1,0 +1,184 @@
+.capture-page {
+  padding: 24px 32px;
+  padding-bottom: 60px;
+
+  .breadcrumb {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: hsl(217, 91%, 97%);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    border: 1px solid hsl(217, 91%, 90%);
+
+    .breadcrumb-text {
+      font-size: 26px;
+      font-weight: 600;
+      color: hsl(217, 91%, 45%);
+    }
+
+    .breadcrumb-change {
+      font-size: 22px;
+      color: hsl(217, 91%, 60%);
+    }
+  }
+
+  .step-section {
+    .step-title {
+      font-size: 32px;
+      font-weight: 700;
+      color: hsl(220, 25%, 10%);
+      display: block;
+      margin-bottom: 20px;
+    }
+  }
+
+  .option-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .option-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 2px solid transparent;
+
+    &:active { opacity: 0.85; }
+
+    &.active {
+      border-color: hsl(217, 91%, 60%);
+      background: hsl(217, 91%, 97%);
+    }
+
+    &.add {
+      background: transparent;
+      border: 2px dashed hsl(210, 12%, 82%);
+      box-shadow: none;
+      justify-content: center;
+
+      .option-name { color: hsl(217, 91%, 60%); }
+    }
+
+    .option-name {
+      font-size: 28px;
+      font-weight: 500;
+      color: hsl(220, 25%, 10%);
+    }
+
+    .option-info {
+      font-size: 22px;
+      color: hsl(215, 10%, 46%);
+    }
+  }
+
+  .nav-back {
+    margin-top: 20px;
+    padding: 12px 0;
+
+    .nav-back-text {
+      font-size: 24px;
+      color: hsl(215, 10%, 46%);
+    }
+  }
+
+  // Capture section
+  .capture-section {
+    .photo-area {
+      width: 100%;
+      height: 400px;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 24px;
+      background: hsl(210, 12%, 96%);
+      border: 2px dashed hsl(210, 12%, 82%);
+
+      .photo-preview {
+        width: 100%;
+        height: 100%;
+      }
+
+      .photo-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+
+        .camera-icon { font-size: 60px; }
+
+        .photo-hint {
+          font-size: 28px;
+          color: hsl(215, 10%, 46%);
+        }
+      }
+    }
+
+    .input-section {
+      margin-bottom: 24px;
+
+      .input-label {
+        font-size: 26px;
+        font-weight: 600;
+        color: hsl(220, 25%, 10%);
+        display: block;
+        margin-bottom: 12px;
+      }
+
+      .input-wrap {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        border: 1px solid hsl(210, 12%, 92%);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+
+      .items-input {
+        width: 100%;
+        font-size: 28px;
+        line-height: 1.4;
+      }
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 28px;
+      background: hsl(217, 91%, 60%);
+      border-radius: 999px;
+      text-align: center;
+      margin-bottom: 20px;
+
+      &:active { opacity: 0.9; }
+
+      &.disabled {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+
+      .save-btn-text {
+        font-size: 30px;
+        font-weight: 600;
+        color: #fff;
+      }
+    }
+
+    .quick-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .saved-count {
+        font-size: 22px;
+        color: hsl(215, 10%, 46%);
+      }
+    }
+  }
+}

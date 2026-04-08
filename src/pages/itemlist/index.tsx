@@ -2,6 +2,7 @@ import { View, Text, Picker } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { getSpaces, getSpace } from '../../services/space'
+import { normalizeItems } from '../../services/items'
 import './index.scss'
 
 interface ListItem {
@@ -37,21 +38,17 @@ export default function ItemListPage() {
       space.rooms?.forEach((room: any) => {
         room.containers?.forEach((container: any) => {
           container.slots?.forEach((slot: any) => {
-            if (slot.items) {
-              slot.items.split('、').forEach((itemName: string) => {
-                const name = itemName.trim()
-                if (!name) return
-                items.push({
-                  name,
-                  roomName: room.name,
-                  containerName: container.name,
-                  slotLabel: slot.label,
-                  spaceId: space._id,
-                  roomId: room._id,
-                  containerId: container._id,
-                })
+            normalizeItems(slot.items).forEach((item) => {
+              items.push({
+                name: item.name,
+                roomName: room.name,
+                containerName: container.name,
+                slotLabel: slot.label,
+                spaceId: space._id,
+                roomId: room._id,
+                containerId: container._id,
               })
-            }
+            })
           })
         })
       })

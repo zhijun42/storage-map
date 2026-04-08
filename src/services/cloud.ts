@@ -10,6 +10,7 @@
  */
 
 import Taro from '@tarojs/taro'
+import { normalizeItems } from './items'
 
 function getDb() {
   return Taro.cloud!.database()
@@ -233,9 +234,10 @@ export async function cloudSearchItems(query: string) {
   // 云数据库不支持LIKE搜索，所以获取所有slots然后前端过滤
   // 对于MVP阶段（数据量小）这是可行的
   const slotsRes = await db.collection('slots').limit(1000).get()
-  const matchedSlots = slotsRes.data.filter((s: any) =>
-    s.items && s.items.toLowerCase().includes(q)
-  )
+  const matchedSlots = slotsRes.data.filter((s: any) => {
+    const items = normalizeItems(s.items)
+    return items.some(i => i.name.toLowerCase().includes(q))
+  })
 
   if (matchedSlots.length === 0) return []
 
@@ -268,6 +270,8 @@ export async function cloudSearchItems(query: string) {
     const container = containers.find((c: any) => c._id === slot.containerId)
     const room = rooms.find((r: any) => r._id === container?.roomId)
     const space = spaces.find((s: any) => s._id === container?.spaceId)
+    const items = normalizeItems(slot.items)
+    const matchedNames = items.filter(i => i.name.toLowerCase().includes(q)).map(i => i.name)
     return {
       spaceId: space?._id || '',
       roomId: room?._id || '',
@@ -276,8 +280,7 @@ export async function cloudSearchItems(query: string) {
       roomName: room?.name || '',
       containerName: container?.name || '',
       slotLabel: slot.label,
-      items: slot.items,
-      photo: slot.photo,
+      items: matchedNames.join('、'),
     }
   })
 }

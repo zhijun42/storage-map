@@ -146,9 +146,14 @@ export default function SpacePage() {
             </View>
           ))}
 
-          <Button className='add-btn' onClick={handleAddContainer}>
-            + 添加容器
-          </Button>
+          <View className='action-row'>
+            <Button className='add-btn' onClick={handleAddContainer}>
+              + 添加容器
+            </Button>
+            <Button className='capture-btn' onClick={() => Taro.navigateTo({ url: '/pages/capture/index' })}>
+              拍照录入
+            </Button>
+          </View>
           <Text className='delete-room-btn' onClick={handleDeleteRoom}>删除此房间</Text>
         </View>
       ) : (

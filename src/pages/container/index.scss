@@ -9,35 +9,16 @@
     margin-bottom: 24px;
   }
 
-  .page-title {
-    font-size: 36px;
-    font-weight: 700;
-    display: block;
-    color: hsl(220, 25%, 10%);
-  }
+  .page-title { font-size: 36px; font-weight: 700; display: block; color: hsl(220, 25%, 10%); }
+  .page-subtitle { font-size: 24px; color: hsl(215, 10%, 46%); display: block; margin-top: 4px; }
+  .delete-container-btn { font-size: 24px; color: hsl(0, 72%, 50%); padding: 8px 16px; flex-shrink: 0; }
 
-  .page-subtitle {
-    font-size: 24px;
-    color: hsl(215, 10%, 46%);
-    display: block;
-    margin-top: 4px;
-  }
-
-  .delete-container-btn {
-    font-size: 24px;
-    color: hsl(0, 72%, 50%);
-    padding: 8px 16px;
-    flex-shrink: 0;
-  }
-
-  .isometric-section {
-    margin-bottom: 24px;
-  }
+  .isometric-section { margin-bottom: 24px; }
 
   .slot-card {
     background: #fff;
     border-radius: 16px;
-    padding: 24px;
+    padding: 20px;
     margin-bottom: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
@@ -45,46 +26,98 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
 
-      .slot-label {
+      .slot-label { font-size: 28px; font-weight: 600; color: hsl(220, 25%, 10%); }
+    }
+
+    .action-btn {
+      font-size: 22px;
+      color: hsl(217, 91%, 60%);
+      padding: 4px 8px;
+
+      &.delete { color: hsl(0, 72%, 50%); }
+    }
+  }
+
+  // Item cards
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .item-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    background: hsl(210, 12%, 97%);
+    border-radius: 12px;
+
+    .item-photo {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .item-photo-placeholder {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      background: hsl(210, 12%, 92%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+
+      .photo-icon { font-size: 28px; }
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+
+      .item-name {
         font-size: 28px;
-        font-weight: 600;
+        font-weight: 500;
         color: hsl(220, 25%, 10%);
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      .slot-actions {
-        display: flex;
-        gap: 16px;
-        align-items: center;
-
-        .action-btn {
-          font-size: 24px;
-          color: hsl(217, 91%, 60%);
-          padding: 4px 8px;
-
-          &.delete { color: hsl(0, 72%, 50%); }
-        }
+      .item-notes {
+        font-size: 22px;
+        color: hsl(215, 10%, 46%);
+        display: block;
+        margin-top: 4px;
       }
     }
 
-    .slot-photo {
-      width: 100%;
-      height: 300px;
-      border-radius: 12px;
-      margin-bottom: 12px;
+    .item-delete {
+      font-size: 32px;
+      color: hsl(215, 10%, 70%);
+      padding: 0 8px;
+      flex-shrink: 0;
     }
+  }
 
-    .slot-input-wrap {
-      background: hsl(210, 12%, 96%);
-      border-radius: 12px;
-      padding: 16px 20px;
-    }
+  .add-item-btn {
+    margin-top: 12px;
+    padding: 16px;
+    border: 1.5px dashed hsl(210, 12%, 82%);
+    border-radius: 12px;
+    text-align: center;
 
-    .slot-input {
-      width: 100%;
-      font-size: 28px;
-      line-height: 1.4;
+    &:active { background: hsl(210, 12%, 96%); }
+
+    .add-item-text {
+      font-size: 26px;
+      color: hsl(217, 91%, 60%);
+      font-weight: 500;
     }
   }
 
@@ -102,8 +135,5 @@
     &:active { background: hsl(217, 91%, 97%); }
   }
 
-  .loading {
-    text-align: center;
-    padding: 80px 0;
-  }
+  .loading { text-align: center; padding: 80px 0; }
 }
