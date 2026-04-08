@@ -1,35 +1,128 @@
 .space-page {
   padding: 32px;
+  padding-bottom: 80px;
 
-  .page-title { font-size: 40px; font-weight: bold; display: block; margin-bottom: 24px; }
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+
+  .page-title { font-size: 40px; font-weight: 700; color: #1a1a2e; }
+
+  .share-btn {
+    font-size: 26px;
+    color: #4a90d9;
+    padding: 10px 24px;
+    border: 1.5px solid #4a90d9;
+    border-radius: 24px;
+    flex-shrink: 0;
+    background: rgba(74, 144, 217, 0.06);
+
+    &:active { background: rgba(74, 144, 217, 0.15); }
+  }
 
   .room-tabs {
-    display: flex; gap: 16px; margin-bottom: 32px; overflow-x: auto; white-space: nowrap;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 8px;
+
     .room-tab {
-      padding: 12px 28px; background: #fff; border-radius: 24px; font-size: 26px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-      &.active { background: #4a90d9; color: #fff; }
-      &.add-tab { background: transparent; border: 2px dashed #ccc; color: #999; }
+      padding: 12px 28px;
+      background: #fff;
+      border-radius: 24px;
+      font-size: 26px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      flex-shrink: 0;
+
+      &.active {
+        background: linear-gradient(135deg, #4a90d9, #357abd);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+      }
+
+      &.add-tab {
+        background: transparent;
+        border: 2px dashed #ccc;
+        color: #999;
+        box-shadow: none;
+      }
     }
   }
 
   .container-card {
-    background: #fff; border-radius: 16px; padding: 28px; margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    .container-name { font-size: 32px; font-weight: 600; display: block; margin-bottom: 8px; }
-    .container-info { font-size: 22px; color: #999; display: block; margin-bottom: 12px; }
+    background: #fff;
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s;
+
+    &:active { transform: scale(0.98); }
+
+    .container-name {
+      font-size: 32px;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+      color: #1a1a2e;
+    }
+
+    .container-info {
+      font-size: 22px;
+      color: #8e99a4;
+      display: block;
+      margin-bottom: 12px;
+    }
+
     .slot-preview {
-      display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid #f0f0f0;
-      .slot-label { font-size: 24px; color: #666; min-width: 100px; }
-      .slot-items { font-size: 24px; color: #333; flex: 1; }
+      display: flex;
+      gap: 8px;
+      padding: 8px 0;
+      border-top: 1px solid #f0f2f5;
+
+      .slot-label {
+        font-size: 24px;
+        color: #8e99a4;
+        min-width: 100px;
+      }
+
+      .slot-items {
+        font-size: 24px;
+        color: #2c3e50;
+        flex: 1;
+      }
     }
   }
 
   .add-btn {
-    width: 100%; background: #4a90d9; color: #fff; border: none;
-    border-radius: 16px; padding: 24px; font-size: 30px; margin-top: 10px;
+    width: 100%;
+    background: linear-gradient(135deg, #4a90d9, #357abd);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 24px;
+    font-size: 30px;
+    font-weight: 600;
+    margin-top: 10px;
+    box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+
+    &:active { opacity: 0.9; }
   }
 
-  .empty { text-align: center; padding: 80px 0; color: #999; }
+  .delete-room-btn {
+    display: block;
+    text-align: center;
+    color: #ff4d4f;
+    font-size: 24px;
+    padding: 24px 0;
+    margin-top: 16px;
+  }
+
+  .empty { text-align: center; padding: 80px 0; color: #8e99a4; }
   .loading { text-align: center; padding: 80px 0; }
 }

@@ -1,13 +1,14 @@
 import { View, Text, Input, Button, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { getSpace, updateContainer } from '../../services/space'
+import { getSpace, updateContainer, uploadPhoto, deleteContainer } from '../../services/space'
 import './index.scss'
 
 export default function ContainerPage() {
   const router = useRouter()
   const { spaceId = '', roomId = '', containerId = '' } = router.params
   const [container, setContainer] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => { loadContainer() }, [])
 
@@ -20,12 +21,18 @@ export default function ContainerPage() {
     setContainer(c || null)
   }
 
+  async function saveSlots(updatedSlots: any[]) {
+    setSaving(true)
+    setContainer((prev: any) => ({ ...prev, slots: updatedSlots }))
+    await updateContainer(spaceId, roomId, containerId, { slots: updatedSlots })
+    setSaving(false)
+  }
+
   async function handleUpdateSlotItems(slotIndex: number, items: string) {
     if (!container) return
     const updatedSlots = [...container.slots]
     updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items }
-    setContainer({ ...container, slots: updatedSlots })
-    await updateContainer(spaceId, roomId, containerId, { slots: updatedSlots })
+    await saveSlots(updatedSlots)
   }
 
   async function handleAddSlot() {
@@ -37,9 +44,34 @@ export default function ContainerPage() {
     })
     if (res.confirm && res.content) {
       const updatedSlots = [...container.slots, { label: res.content, type: 'shelf', items: '', photo: '' }]
-      setContainer({ ...container, slots: updatedSlots })
-      await updateContainer(spaceId, roomId, containerId, { slots: updatedSlots })
+      await saveSlots(updatedSlots)
     }
+  }
+
+  async function handleDeleteSlot(slotIndex: number) {
+    if (!container || container.slots.length <= 1) {
+      Taro.showToast({ title: '至少保留一层', icon: 'none' })
+      return
+    }
+    const res = await Taro.showModal({
+      title: '删除分层',
+      content: `确认删除「${container.slots[slotIndex].label}」？`,
+    })
+    if (res.confirm) {
+      const updatedSlots = container.slots.filter((_: any, i: number) => i !== slotIndex)
+      await saveSlots(updatedSlots)
+    }
+  }
+
+  async function handleMoveSlot(slotIndex: number, direction: 'up' | 'down') {
+    if (!container) return
+    const targetIndex = direction === 'up' ? slotIndex - 1 : slotIndex + 1
+    if (targetIndex < 0 || targetIndex >= container.slots.length) return
+    const updatedSlots = [...container.slots]
+    const temp = updatedSlots[slotIndex]
+    updatedSlots[slotIndex] = updatedSlots[targetIndex]
+    updatedSlots[targetIndex] = temp
+    await saveSlots(updatedSlots)
   }
 
   async function handleTakePhoto(slotIndex: number) {
@@ -52,14 +84,40 @@ export default function ContainerPage() {
       })
       if (res.tempFiles?.length > 0) {
         const photoPath = res.tempFiles[0].tempFilePath
-        // TODO: 上传到云存储，目前先用本地路径
+        Taro.showLoading({ title: '上传中...' })
+        const cloudUrl = await uploadPhoto(photoPath, containerId, slotIndex)
+        Taro.hideLoading()
         const updatedSlots = [...container.slots]
-        updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], photo: photoPath }
-        setContainer({ ...container, slots: updatedSlots })
-        await updateContainer(spaceId, roomId, containerId, { slots: updatedSlots })
+        updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], photo: cloudUrl }
+        await saveSlots(updatedSlots)
       }
     } catch (e) {
+      Taro.hideLoading()
       console.log('取消拍照')
+    }
+  }
+
+  async function handleDeleteContainer() {
+    const res = await Taro.showModal({
+      title: '删除容器',
+      content: `确认删除「${container.name}」及其所有分层数据？`,
+    })
+    if (res.confirm) {
+      await deleteContainer(spaceId, roomId, containerId)
+      Taro.navigateBack()
+    }
+  }
+
+  async function handleRenameSlot(slotIndex: number) {
+    const res = await Taro.showModal({
+      title: '重命名分层',
+      editable: true,
+      placeholderText: container.slots[slotIndex].label,
+    })
+    if (res.confirm && res.content) {
+      const updatedSlots = [...container.slots]
+      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], label: res.content }
+      await saveSlots(updatedSlots)
     }
   }
 
@@ -67,22 +125,37 @@ export default function ContainerPage() {
 
   return (
     <View className='container-page'>
-      <Text className='page-title'>{container.name}</Text>
-      <Text className='page-subtitle'>
-        {container.type === 'wardrobe' ? '衣柜' :
-         container.type === 'cabinet' ? '柜子' :
-         container.type === 'shelf' ? '书架' : '容器'}
-        {container.movable ? ' · 可移动' : ''}
-      </Text>
+      <View className='page-header'>
+        <View>
+          <Text className='page-title'>{container.name}</Text>
+          <Text className='page-subtitle'>
+            {container.type === 'wardrobe' ? '衣柜' :
+             container.type === 'cabinet' ? '柜子' :
+             container.type === 'shelf' ? '书架' : '容器'}
+            {container.movable ? ' · 可移动' : ''}
+            {saving ? ' · 保存中...' : ''}
+          </Text>
+        </View>
+        <Text className='delete-container-btn' onClick={handleDeleteContainer}>删除</Text>
+      </View>
 
       <View className='slots'>
         {container.slots?.map((slot: any, index: number) => (
           <View key={index} className='slot-card'>
             <View className='slot-header'>
-              <Text className='slot-label'>{slot.label}</Text>
-              <Text className='photo-btn' onClick={() => handleTakePhoto(index)}>
-                {slot.photo ? '更换照片' : '拍照'}
-              </Text>
+              <Text className='slot-label' onClick={() => handleRenameSlot(index)}>{slot.label}</Text>
+              <View className='slot-actions'>
+                {index > 0 && (
+                  <Text className='action-btn' onClick={() => handleMoveSlot(index, 'up')}>↑</Text>
+                )}
+                {index < container.slots.length - 1 && (
+                  <Text className='action-btn' onClick={() => handleMoveSlot(index, 'down')}>↓</Text>
+                )}
+                <Text className='action-btn photo' onClick={() => handleTakePhoto(index)}>
+                  {slot.photo ? '换图' : '拍照'}
+                </Text>
+                <Text className='action-btn delete' onClick={() => handleDeleteSlot(index)}>删除</Text>
+              </View>
             </View>
 
             {slot.photo && (
@@ -94,6 +167,7 @@ export default function ContainerPage() {
               placeholder='输入物品描述（如：T恤×15、短裤×8）'
               value={slot.items}
               onBlur={(e) => handleUpdateSlotItems(index, e.detail.value)}
+              adjustPosition
             />
           </View>
         ))}

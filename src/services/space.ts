@@ -186,6 +186,9 @@ export async function searchItems(query: string) {
         container.slots?.forEach((slot: any) => {
           if (slot.items && slot.items.toLowerCase().includes(q)) {
             results.push({
+              spaceId: space._id,
+              roomId: room._id,
+              containerId: container._id,
               spaceName: space.name,
               roomName: room.name,
               containerName: container.name,
@@ -199,6 +202,9 @@ export async function searchItems(query: string) {
           child.slots?.forEach((slot: any) => {
             if (slot.items && slot.items.toLowerCase().includes(q)) {
               results.push({
+                spaceId: space._id,
+                roomId: room._id,
+                containerId: child._id,
                 spaceName: space.name,
                 roomName: room.name,
                 containerName: `${container.name} > ${child.name}`,

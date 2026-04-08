@@ -1,7 +1,41 @@
 import { View, Text, Input } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import { useState } from 'react'
 import { searchItems } from '../../services/space'
 import './index.scss'
+
+function HighlightText({ text, keyword }: { text: string; keyword: string }) {
+  if (!keyword.trim()) return <Text>{text}</Text>
+  const lowerText = text.toLowerCase()
+  const lowerKey = keyword.toLowerCase()
+  const parts: { text: string; highlight: boolean }[] = []
+  let lastIndex = 0
+
+  let pos = lowerText.indexOf(lowerKey)
+  while (pos !== -1) {
+    if (pos > lastIndex) {
+      parts.push({ text: text.slice(lastIndex, pos), highlight: false })
+    }
+    parts.push({ text: text.slice(pos, pos + keyword.length), highlight: true })
+    lastIndex = pos + keyword.length
+    pos = lowerText.indexOf(lowerKey, lastIndex)
+  }
+  if (lastIndex < text.length) {
+    parts.push({ text: text.slice(lastIndex), highlight: false })
+  }
+
+  return (
+    <Text>
+      {parts.map((part, i) =>
+        part.highlight ? (
+          <Text key={i} className='highlight'>{part.text}</Text>
+        ) : (
+          <Text key={i}>{part.text}</Text>
+        )
+      )}
+    </Text>
+  )
+}
 
 export default function SearchPage() {
   const [query, setQuery] = useState('')
@@ -20,6 +54,14 @@ export default function SearchPage() {
     setSearched(true)
   }
 
+  function handleNavigateToContainer(result: any) {
+    if (result.spaceId && result.roomId && result.containerId) {
+      Taro.navigateTo({
+        url: `/pages/container/index?spaceId=${result.spaceId}&roomId=${result.roomId}&containerId=${result.containerId}`,
+      })
+    }
+  }
+
   return (
     <View className='search-page'>
       <View className='search-bar'>
@@ -28,6 +70,7 @@ export default function SearchPage() {
           placeholder='搜索物品（如：护照、充电器、T恤）'
           value={query}
           focus
+          confirmType='search'
           onInput={(e) => handleSearch(e.detail.value)}
         />
       </View>
@@ -38,8 +81,14 @@ export default function SearchPage() {
         </View>
       )}
 
+      <View className='results-count'>
+        {searched && results.length > 0 && (
+          <Text className='count-text'>找到 {results.length} 个结果</Text>
+        )}
+      </View>
+
       {results.map((result, index) => (
-        <View key={index} className='result-card'>
+        <View key={index} className='result-card' onClick={() => handleNavigateToContainer(result)}>
           <View className='result-location'>
             <Text className='location-space'>{result.spaceName}</Text>
             <Text className='location-sep'> &gt; </Text>
@@ -51,7 +100,7 @@ export default function SearchPage() {
             <Text className='slot-label'>{result.slotLabel}</Text>
           </View>
           <View className='result-items'>
-            <Text>{result.items}</Text>
+            <HighlightText text={result.items} keyword={query} />
           </View>
         </View>
       ))}

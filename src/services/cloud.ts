@@ -257,6 +257,9 @@ export async function cloudSearchItems(query: string) {
     const room = rooms.find((r: any) => r._id === container?.roomId)
     const space = spaces.find((s: any) => s._id === container?.spaceId)
     return {
+      spaceId: space?._id || '',
+      roomId: room?._id || '',
+      containerId: container?._id || '',
       spaceName: space?.name || '',
       roomName: room?.name || '',
       containerName: container?.name || '',

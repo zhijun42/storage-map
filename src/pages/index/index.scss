@@ -1,28 +1,31 @@
 .index {
   padding: 32px;
+  padding-bottom: 80px;
 
   .header {
     margin-bottom: 40px;
+    padding-top: 16px;
 
     .title {
-      font-size: 48px;
-      font-weight: bold;
+      font-size: 52px;
+      font-weight: 700;
       display: block;
       margin-bottom: 8px;
+      color: #1a1a2e;
     }
 
     .subtitle {
       font-size: 26px;
-      color: #999;
+      color: #8e99a4;
     }
   }
 
   .search-bar {
     background: #fff;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 24px 32px;
     margin-bottom: 40px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
     .search-placeholder {
       color: #bbb;
@@ -33,40 +36,50 @@
   .section {
     .section-title {
       font-size: 32px;
-      font-weight: bold;
+      font-weight: 700;
       margin-bottom: 24px;
       display: block;
+      color: #1a1a2e;
     }
   }
 
   .space-card {
     background: #fff;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 32px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-left: 6px solid #4a90d9;
+    transition: transform 0.2s;
+
+    &:active { transform: scale(0.98); }
 
     .space-name {
       font-size: 32px;
       font-weight: 600;
       display: block;
       margin-bottom: 8px;
+      color: #1a1a2e;
     }
 
     .space-info {
       font-size: 24px;
-      color: #999;
+      color: #8e99a4;
     }
   }
 
   .add-btn {
     width: 100%;
-    background: #4a90d9;
+    background: linear-gradient(135deg, #4a90d9, #357abd);
     color: #fff;
     border: none;
-    border-radius: 16px;
+    border-radius: 20px;
     padding: 24px;
     font-size: 30px;
+    font-weight: 600;
     margin-top: 20px;
+    box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
+
+    &:active { opacity: 0.9; }
   }
 }
