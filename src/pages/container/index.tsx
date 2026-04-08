@@ -43,9 +43,9 @@ export default function ContainerPage() {
       title: '添加分层',
       editable: true,
       placeholderText: '分层名称（如：第2层、上层抽屉）',
-    })
-    if (res.confirm && res.content) {
-      const updatedSlots = [...container.slots, { label: res.content, type: 'shelf', items: '', photo: '' }]
+    } as any)
+    if (res.confirm && (res as any).content) {
+      const updatedSlots = [...container.slots, { label: (res as any).content, type: 'shelf', items: '', photo: '' }]
       await saveSlots(updatedSlots)
     }
   }
@@ -115,10 +115,10 @@ export default function ContainerPage() {
       title: '重命名分层',
       editable: true,
       placeholderText: container.slots[slotIndex].label,
-    })
-    if (res.confirm && res.content) {
+    } as any)
+    if (res.confirm && (res as any).content) {
       const updatedSlots = [...container.slots]
-      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], label: res.content }
+      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], label: (res as any).content }
       await saveSlots(updatedSlots)
     }
   }

@@ -31,9 +31,9 @@ export default function SpacePage() {
       title: '添加房间',
       editable: true,
       placeholderText: '房间名称（如：卧室、客厅）',
-    })
-    if (res.confirm && res.content) {
-      const room = await addRoom(spaceId, res.content)
+    } as any)
+    if (res.confirm && (res as any).content) {
+      const room = await addRoom(spaceId, (res as any).content)
       if (room) {
         setActiveRoom(room._id)
         loadSpace()
@@ -46,10 +46,10 @@ export default function SpacePage() {
       title: '添加容器',
       editable: true,
       placeholderText: '容器名称（如：主衣柜、书架）',
-    })
-    if (res.confirm && res.content) {
+    } as any)
+    if (res.confirm && (res as any).content) {
       await addContainer(spaceId, activeRoom, {
-        name: res.content,
+        name: (res as any).content,
         type: 'custom',
         movable: false,
         slots: [

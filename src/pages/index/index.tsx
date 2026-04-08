@@ -25,10 +25,10 @@ export default function Index() {
       title: '创建新空间',
       editable: true,
       placeholderText: '请输入空间名称',
-    })
-    if (res.confirm && res.content) {
+    } as any)
+    if (res.confirm && (res as any).content) {
       const { createSpace } = await import('../../services/space')
-      await createSpace(res.content)
+      await createSpace((res as any).content)
       loadSpaces()
     }
   }

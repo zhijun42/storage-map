@@ -52,7 +52,7 @@ async function seedDongbaoData(spaceId: string) {
   // 主卧
   const bedroom = await addRoom(spaceId, '主卧')
   if (bedroom) {
-    await addContainer(spaceId, bedroom._id, {
+    await addContainer(spaceId, String(bedroom._id), {
       name: '衣柜',
       type: 'wardrobe',
       movable: false,
@@ -64,7 +64,7 @@ async function seedDongbaoData(spaceId: string) {
       ],
     })
 
-    await addContainer(spaceId, bedroom._id, {
+    await addContainer(spaceId, String(bedroom._id), {
       name: '五斗柜',
       type: 'cabinet',
       movable: false,
@@ -77,7 +77,7 @@ async function seedDongbaoData(spaceId: string) {
       ],
     })
 
-    await addContainer(spaceId, bedroom._id, {
+    await addContainer(spaceId, String(bedroom._id), {
       name: '床头柜',
       type: 'cabinet',
       movable: true,
@@ -91,7 +91,7 @@ async function seedDongbaoData(spaceId: string) {
   // 客厅
   const livingRoom = await addRoom(spaceId, '客厅')
   if (livingRoom) {
-    await addContainer(spaceId, livingRoom._id, {
+    await addContainer(spaceId, String(livingRoom._id), {
       name: '电视柜',
       type: 'cabinet',
       movable: false,
@@ -102,7 +102,7 @@ async function seedDongbaoData(spaceId: string) {
       ],
     })
 
-    await addContainer(spaceId, livingRoom._id, {
+    await addContainer(spaceId, String(livingRoom._id), {
       name: '书架',
       type: 'shelf',
       movable: false,
@@ -113,7 +113,7 @@ async function seedDongbaoData(spaceId: string) {
       ],
     })
 
-    await addContainer(spaceId, livingRoom._id, {
+    await addContainer(spaceId, String(livingRoom._id), {
       name: '储物柜',
       type: 'cabinet',
       movable: false,
@@ -127,7 +127,7 @@ async function seedDongbaoData(spaceId: string) {
   // 玄关
   const entrance = await addRoom(spaceId, '玄关')
   if (entrance) {
-    await addContainer(spaceId, entrance._id, {
+    await addContainer(spaceId, String(entrance._id), {
       name: '鞋柜',
       type: 'cabinet',
       movable: false,
@@ -141,7 +141,7 @@ async function seedDongbaoData(spaceId: string) {
   // 次卧
   const secondBedroom = await addRoom(spaceId, '次卧')
   if (secondBedroom) {
-    await addContainer(spaceId, secondBedroom._id, {
+    await addContainer(spaceId, String(secondBedroom._id), {
       name: '书柜',
       type: 'shelf',
       movable: false,
