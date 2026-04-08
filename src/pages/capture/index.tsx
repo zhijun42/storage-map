@@ -2,6 +2,8 @@ import { View, Text, Input, Image, Picker } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { getSpaces, getSpace, updateContainer, uploadPhoto } from '../../services/space'
+import FloorplanView from '../../components/FloorplanView'
+import IsometricView from '../../components/IsometricView'
 import { normalizeItems, serializeItems, CATEGORIES } from '../../services/items'
 import './index.scss'
 
@@ -177,34 +179,46 @@ export default function CapturePage() {
           </View>
         </View>
 
-        {/* Location selection */}
+        {/* Location selection — visual */}
         <View className='field'>
-          <Text className='label'>存放位置 *</Text>
-          <View className='location-pickers'>
-            <Picker mode='selector' range={rooms.map((r: any) => r.name)} onChange={e => handleRoomChange(Number(e.detail.value))}>
-              <View className='picker-wrap small'>
-                <Text className={selectedRoomIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
-                  {selectedRoomIndex >= 0 ? rooms[selectedRoomIndex].name : '房间'}
-                </Text>
-              </View>
-            </Picker>
-            <Text className='sep'>›</Text>
-            <Picker mode='selector' range={containers.map((c: any) => c.name)} onChange={e => handleContainerChange(Number(e.detail.value))}>
-              <View className='picker-wrap small'>
-                <Text className={selectedContainerIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
-                  {selectedContainerIndex >= 0 ? containers[selectedContainerIndex].name : '容器'}
-                </Text>
-              </View>
-            </Picker>
-            <Text className='sep'>›</Text>
-            <Picker mode='selector' range={slotLabels} onChange={e => setSelectedSlotIndex(Number(e.detail.value))}>
-              <View className='picker-wrap small'>
-                <Text className={selectedSlotIndex >= 0 ? 'picker-text' : 'picker-text placeholder'}>
-                  {selectedSlotIndex >= 0 ? slotLabels[selectedSlotIndex] : '分层'}
-                </Text>
-              </View>
-            </Picker>
-          </View>
+          <Text className='label'>存放位置 * — 点击平面图选择容器</Text>
+          {rooms.length > 0 && (
+            <View className='map-picker'>
+              <FloorplanView
+                rooms={rooms}
+                compact
+                highlightContainerId={selectedContainerIndex >= 0 ? containers[selectedContainerIndex]?._id : null}
+                onContainerClick={(roomId, containerId) => {
+                  const ri = rooms.findIndex((r: any) => r._id === roomId)
+                  if (ri >= 0) {
+                    handleRoomChange(ri)
+                    const ci = rooms[ri].containers?.findIndex((c: any) => c._id === containerId) ?? -1
+                    if (ci >= 0) handleContainerChange(ci)
+                  }
+                }}
+              />
+            </View>
+          )}
+          {/* Selected location display */}
+          {selectedContainerIndex >= 0 && (
+            <View className='selected-location'>
+              <Text className='loc-text'>
+                {rooms[selectedRoomIndex]?.name} › {containers[selectedContainerIndex]?.name}
+              </Text>
+            </View>
+          )}
+          {/* Slot picker via IsometricView */}
+          {selectedContainerIndex >= 0 && containers[selectedContainerIndex]?.slots && (
+            <View className='slot-picker'>
+              <Text className='label'>点击选择分层</Text>
+              <IsometricView
+                containerName={containers[selectedContainerIndex].name}
+                slots={containers[selectedContainerIndex].slots}
+                highlightSlotIndex={selectedSlotIndex >= 0 ? selectedSlotIndex : null}
+                onSlotClick={(i) => setSelectedSlotIndex(i)}
+              />
+            </View>
+          )}
         </View>
       </View>
 

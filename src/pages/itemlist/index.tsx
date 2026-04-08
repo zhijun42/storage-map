@@ -2,7 +2,7 @@ import { View, Text, Picker } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState, useMemo } from 'react'
 import { getSpaces, getSpace } from '../../services/space'
-import { normalizeItems } from '../../services/items'
+import { normalizeItems, CATEGORIES } from '../../services/items'
 import './index.scss'
 
 type ViewMode = 'items' | 'rooms'
@@ -22,6 +22,7 @@ export default function ItemListPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('items')
   const [allItems, setAllItems] = useState<ListItem[]>([])
   const [spaces, setSpaces] = useState<any[]>([])
+  const [categoryFilter, setCategoryFilter] = useState('全部')
   const [roomFilter, setRoomFilter] = useState('全部')
   const [loading, setLoading] = useState(true)
 
@@ -62,11 +63,15 @@ export default function ItemListPage() {
   }
 
   const rooms = useMemo(() => {
-    const set = new Set(allItems.map(i => i.roomName))
+    return spaces.flatMap((s: any) => s?.rooms || [])
+  }, [spaces])
+
+  const categories = useMemo(() => {
+    const set = new Set(allItems.map(i => i.category).filter(Boolean))
     return ['全部', ...set]
   }, [allItems])
 
-  const filtered = roomFilter === '全部' ? allItems : allItems.filter(i => i.roomName === roomFilter)
+  const filtered = categoryFilter === '全部' ? allItems : allItems.filter(i => i.category === categoryFilter)
 
   function handleItemClick(item: ListItem) {
     Taro.navigateTo({
@@ -98,9 +103,9 @@ export default function ItemListPage() {
       {!loading && viewMode === 'items' && (
         <View>
           <View className='filter-bar'>
-            <Picker mode='selector' range={rooms} onChange={(e) => setRoomFilter(rooms[Number(e.detail.value)])}>
+            <Picker mode='selector' range={categories} onChange={(e) => setCategoryFilter(categories[Number(e.detail.value)])}>
               <View className='filter-chip'>
-                <Text>{roomFilter === '全部' ? '全部房间' : roomFilter}</Text>
+                <Text>{categoryFilter === '全部' ? '全部类型' : categoryFilter}</Text>
                 <Text className='arrow'>▾</Text>
               </View>
             </Picker>
@@ -126,9 +131,23 @@ export default function ItemListPage() {
       )}
 
       {/* Rooms view (manage space) */}
+      {!loading && viewMode === 'rooms' && (
+        <View className='filter-bar'>
+          <Picker mode='selector' range={['全部', ...rooms.map((r: any) => r.name)]}
+            onChange={(e) => {
+              const opts = ['全部', ...rooms.map((r: any) => r.name)]
+              setRoomFilter(opts[Number(e.detail.value)])
+            }}>
+            <View className='filter-chip'>
+              <Text>{roomFilter === '全部' ? '全部房间' : roomFilter}</Text>
+              <Text className='arrow'>▾</Text>
+            </View>
+          </Picker>
+        </View>
+      )}
       {!loading && viewMode === 'rooms' && spaces.map((space: any) => (
         <View key={space._id} className='rooms-view'>
-          {space.rooms?.map((room: any) => (
+          {space.rooms?.filter((room: any) => roomFilter === '全部' || room.name === roomFilter).map((room: any) => (
             <View key={room._id} className='room-section'>
               <Text className='room-title'>{room.name}</Text>
               {room.containers?.map((container: any) => (

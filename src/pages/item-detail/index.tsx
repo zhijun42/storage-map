@@ -35,8 +35,12 @@ export default function ItemDetailPage() {
 
   return (
     <View className='item-detail-page'>
-      {item.photo && (
+      {item.photo ? (
         <Image className='detail-photo' src={item.photo} mode='aspectFill' />
+      ) : (
+        <View className='detail-photo-empty'>
+          <Text className='photo-empty-text'>暂无照片</Text>
+        </View>
       )}
 
       <View className='detail-card'>
@@ -56,12 +60,10 @@ export default function ItemDetailPage() {
             <Text className='field-label'>录入日期</Text>
             <Text className='field-value'>{item.createdAt || '未记录'}</Text>
           </View>
-          {item.notes && (
-            <View className='field-row'>
-              <Text className='field-label'>备注</Text>
-              <Text className='field-value'>{item.notes}</Text>
-            </View>
-          )}
+          <View className='field-row'>
+            <Text className='field-label'>备注</Text>
+            <Text className='field-value'>{item.notes || '暂无'}</Text>
+          </View>
         </View>
       </View>
 

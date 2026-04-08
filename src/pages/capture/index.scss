@@ -48,9 +48,22 @@
       }
     }
 
-    .location-pickers {
-      display: flex; gap: 8px; align-items: center;
-      .sep { font-size: 24px; color: hsl(215, 10%, 60%); }
+    .map-picker {
+      margin-bottom: 12px;
+    }
+
+    .selected-location {
+      padding: 12px 20px;
+      background: hsl(217, 91%, 97%);
+      border-radius: 12px;
+      border: 1px solid hsl(217, 91%, 90%);
+      margin-bottom: 12px;
+
+      .loc-text { font-size: 26px; font-weight: 600; color: hsl(217, 91%, 45%); }
+    }
+
+    .slot-picker {
+      margin-top: 8px;
     }
   }
 

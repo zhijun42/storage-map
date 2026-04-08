@@ -60,14 +60,7 @@ export default function IsometricView({
                 className={`slot ${isHighlighted ? 'highlighted' : ''} ${isDrawer ? 'drawer' : ''} ${isOpen ? 'open' : ''}`}
                 onClick={() => onSlotClick?.(index)}
               >
-                {isOpen && (
-                  <View className='perspective-lines'>
-                    <View className='depth-tl' />
-                    <View className='depth-tr' />
-                    <View className='depth-bl' />
-                    <View className='depth-br' />
-                  </View>
-                )}
+                {isOpen && <View className='perspective-lines' />}
                 {isDrawer && <View className='drawer-handle' />}
                 {category && <Text className='slot-category'>{category}</Text>}
               </View>
