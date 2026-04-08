@@ -1,7 +1,25 @@
+// Design tokens ported from Lovable warm-space-style
+$bg: hsl(210, 20%, 98%);
+$card: #ffffff;
+$foreground: hsl(220, 25%, 10%);
+$primary: hsl(217, 91%, 60%);
+$primary-light: hsl(217, 91%, 95%);
+$accent: hsl(25, 60%, 55%);
+$muted: hsl(210, 12%, 96%);
+$muted-fg: hsl(215, 10%, 46%);
+$border: hsl(210, 12%, 92%);
+$destructive: hsl(0, 72%, 50%);
+$selected: hsl(45, 96%, 53%);
+$shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+$shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.1);
+$radius: 12px;
+$radius-lg: 16px;
+$radius-pill: 999px;
+
 page {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: linear-gradient(180deg, #f0f4f8 0%, #e8ecf1 100%);
-  color: #2c3e50;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background-color: $bg;
+  color: $foreground;
   font-size: 28px;
   line-height: 1.6;
   min-height: 100vh;

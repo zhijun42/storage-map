@@ -162,13 +162,15 @@ export default function ContainerPage() {
               <Image className='slot-photo' src={slot.photo} mode='aspectFill' />
             )}
 
-            <Input
-              className='slot-input'
-              placeholder='输入物品描述（如：T恤×15、短裤×8）'
-              value={slot.items}
-              onBlur={(e) => handleUpdateSlotItems(index, e.detail.value)}
-              adjustPosition
-            />
+            <View className='slot-input-wrap'>
+              <Input
+                className='slot-input'
+                placeholder='输入物品'
+                value={slot.items}
+                onBlur={(e) => handleUpdateSlotItems(index, e.detail.value)}
+                adjustPosition
+              />
+            </View>
           </View>
         ))}
       </View>

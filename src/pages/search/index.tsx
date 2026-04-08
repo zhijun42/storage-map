@@ -65,45 +65,52 @@ export default function SearchPage() {
   return (
     <View className='search-page'>
       <View className='search-bar'>
-        <Input
-          className='search-input'
-          placeholder='搜索物品（如：护照、充电器、T恤）'
-          value={query}
-          focus
-          confirmType='search'
-          onInput={(e) => handleSearch(e.detail.value)}
-        />
+        <View className='search-input-wrap'>
+          <Input
+            className='search-input'
+            placeholder='搜索物品'
+            value={query}
+            focus
+            confirmType='search'
+            onInput={(e) => handleSearch(e.detail.value)}
+          />
+        </View>
       </View>
 
-      {searched && results.length === 0 && (
-        <View className='empty'>
-          <Text>没有找到 "{query}"</Text>
+      {searched && results.length > 0 && (
+        <View className='results-count'>
+          <Text className='count-text'>找到 {results.length} 个结果</Text>
         </View>
       )}
 
-      <View className='results-count'>
-        {searched && results.length > 0 && (
-          <Text className='count-text'>找到 {results.length} 个结果</Text>
-        )}
-      </View>
-
       {results.map((result, index) => (
         <View key={index} className='result-card' onClick={() => handleNavigateToContainer(result)}>
-          <View className='result-location'>
-            <Text className='location-space'>{result.spaceName}</Text>
-            <Text className='location-sep'> &gt; </Text>
-            <Text className='location-room'>{result.roomName}</Text>
-            <Text className='location-sep'> &gt; </Text>
-            <Text className='location-container'>{result.containerName}</Text>
-          </View>
-          <View className='result-slot'>
-            <Text className='slot-label'>{result.slotLabel}</Text>
-          </View>
-          <View className='result-items'>
-            <HighlightText text={result.items} keyword={query} />
+          <View className='result-inner'>
+            <View className='result-index'>
+              <Text className='index-text'>{index + 1}</Text>
+            </View>
+            <View className='result-content'>
+              <View className='result-location'>
+                <Text className='location-container'>{result.containerName}</Text>
+                <Text className='location-sep'> · </Text>
+                <Text className='location-room'>{result.slotLabel}</Text>
+              </View>
+              <View className='result-items'>
+                <HighlightText text={result.items} keyword={query} />
+              </View>
+            </View>
+            <View className='result-category'>
+              <Text className='category-text'>{result.roomName}</Text>
+            </View>
           </View>
         </View>
       ))}
+
+      {searched && results.length === 0 && (
+        <View className='empty'>
+          <Text>未找到匹配的物品</Text>
+        </View>
+      )}
     </View>
   )
 }

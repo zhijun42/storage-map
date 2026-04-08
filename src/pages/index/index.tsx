@@ -1,15 +1,11 @@
-import { View, Text, Button } from '@tarojs/components'
+import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
-import { getSpaces, createSpace } from '../../services/space'
+import { useState } from 'react'
+import { getSpaces } from '../../services/space'
 import './index.scss'
 
 export default function Index() {
   const [spaces, setSpaces] = useState<any[]>([])
-
-  useEffect(() => {
-    loadSpaces()
-  }, [])
 
   useDidShow(() => { loadSpaces() })
 
@@ -22,9 +18,10 @@ export default function Index() {
     const res = await Taro.showModal({
       title: '创建新空间',
       editable: true,
-      placeholderText: '请输入名称（如：张先生的家）',
+      placeholderText: '请输入空间名称',
     })
     if (res.confirm && res.content) {
+      const { createSpace } = await import('../../services/space')
       await createSpace(res.content)
       loadSpaces()
     }
@@ -39,34 +36,37 @@ export default function Index() {
   }
 
   return (
-    <View className='index'>
-      <View className='header'>
-        <Text className='title'>收纳地图</Text>
-        <Text className='subtitle'>快速制作物品地图，轻松查找家中物品</Text>
-      </View>
-
-      <View className='search-bar' onClick={handleOpenSearch}>
-        <Text className='search-placeholder'>搜索物品（如：护照、充电器）</Text>
-      </View>
-
-      <View className='section'>
-        <Text className='section-title'>我的空间</Text>
+    <View className='index-page'>
+      {/* Space cards */}
+      <View className='space-list'>
         {spaces.map((space) => (
           <View
             key={space._id}
             className='space-card'
             onClick={() => handleOpenSpace(space._id)}
           >
-            <Text className='space-name'>{space.name}</Text>
-            <Text className='space-info'>
-              {space.roomCount || 0} 个房间 · {space.containerCount || 0} 个容器
-            </Text>
+            <View className='space-icon'>
+              <Text className='icon-text'>{space.name.slice(0, 1)}</Text>
+            </View>
+            <View className='space-info'>
+              <Text className='space-name'>{space.name}</Text>
+              <Text className='space-meta'>
+                {space.roomCount || 0} 个房间 · {space.containerCount || 0} 个容器
+              </Text>
+            </View>
+            <Text className='space-arrow'>›</Text>
           </View>
         ))}
+      </View>
 
-        <Button className='add-btn' onClick={handleCreateSpace}>
-          + 创建新空间
-        </Button>
+      {/* Action buttons — matches MapHomePage style */}
+      <View className='actions'>
+        <View className='action-btn' onClick={handleOpenSearch}>
+          <Text className='action-text'>物品查询</Text>
+        </View>
+        <View className='action-btn' onClick={handleCreateSpace}>
+          <Text className='action-text'>创建新空间</Text>
+        </View>
       </View>
     </View>
   )

@@ -27,8 +27,20 @@ export async function cloudGetSpaces() {
   const db = getDb()
   const res = await db.collection('spaces').orderBy('createdAt', 'desc').get()
   log('getSpaces got', res.data.length, 'spaces')
-  // 简化：MVP阶段不附加count（减少查询次数避免timeout）
-  return res.data.map((s: any) => ({ ...s, roomCount: 0, containerCount: 0 }))
+
+  const spaceIds = res.data.map((s: any) => s._id)
+  if (spaceIds.length === 0) return []
+
+  const [roomsRes, containersRes] = await Promise.all([
+    db.collection('rooms').where({ spaceId: db.command.in(spaceIds.slice(0, 20)) }).get(),
+    db.collection('containers').where({ spaceId: db.command.in(spaceIds.slice(0, 20)) }).get(),
+  ])
+
+  return res.data.map((s: any) => ({
+    ...s,
+    roomCount: roomsRes.data.filter((r: any) => r.spaceId === s._id).length,
+    containerCount: containersRes.data.filter((c: any) => c.spaceId === s._id).length,
+  }))
 }
 
 export async function cloudGetSpace(id: string) {
