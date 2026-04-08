@@ -1,5 +1,5 @@
 import { View, Text, Input, Button, Image } from '@tarojs/components'
-import Taro, { useRouter } from '@tarojs/taro'
+import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { getSpace, updateContainer, uploadPhoto, deleteContainer } from '../../services/space'
 import { normalizeItems, serializeItems, Item } from '../../services/items'
@@ -14,6 +14,7 @@ export default function ContainerPage() {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
 
   useEffect(() => { loadContainer() }, [])
+  useDidShow(() => { loadContainer() })
 
   async function loadContainer() {
     const space = await getSpace(spaceId)
@@ -32,36 +33,16 @@ export default function ContainerPage() {
   }
 
   // Item operations
-  async function handleAddItem(slotIndex: number) {
-    const res = await Taro.showModal({
-      title: '添加物品',
-      editable: true,
-      placeholderText: '物品名称',
-    } as any)
-    if (res.confirm && (res as any).content) {
-      const updatedSlots = [...container.slots]
-      const items = normalizeItems(updatedSlots[slotIndex].items)
-      items.push({ name: (res as any).content, photo: '', notes: '' })
-      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(items) }
-      await saveSlots(updatedSlots)
-    }
+  function handleAddItem(slotIndex: number) {
+    Taro.navigateTo({
+      url: `/pages/add-item/index?spaceId=${spaceId}&roomId=${roomId}&containerId=${containerId}&slotIndex=${slotIndex}`,
+    })
   }
 
-  async function handleEditItem(slotIndex: number, itemIndex: number) {
-    const items = normalizeItems(container.slots[slotIndex].items)
-    const item = items[itemIndex]
-    const res = await Taro.showModal({
-      title: '编辑物品',
-      editable: true,
-      placeholderText: item.name,
-    } as any)
-    if (res.confirm && (res as any).content) {
-      const updatedSlots = [...container.slots]
-      const updatedItems = normalizeItems(updatedSlots[slotIndex].items)
-      updatedItems[itemIndex] = { ...updatedItems[itemIndex], name: (res as any).content }
-      updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(updatedItems) }
-      await saveSlots(updatedSlots)
-    }
+  function handleViewItem(slotIndex: number, itemIndex: number) {
+    Taro.navigateTo({
+      url: `/pages/item-detail/index?spaceId=${spaceId}&roomId=${roomId}&containerId=${containerId}&slotIndex=${slotIndex}&itemIndex=${itemIndex}`,
+    })
   }
 
   async function handleDeleteItem(slotIndex: number, itemIndex: number) {
@@ -190,7 +171,12 @@ export default function ContainerPage() {
                       </View>
                     )}
                     <View className='item-info'>
-                      <Text className='item-name' onClick={() => handleEditItem(slotIndex, itemIndex)}>{item.name}</Text>
+                      <Text className='item-name' onClick={() => handleViewItem(slotIndex, itemIndex)}>{item.name}</Text>
+                      <View className='item-meta'>
+                        {item.category && <Text className='item-category'>{item.category}</Text>}
+                        {item.price && <Text className='item-price'>¥{item.price}</Text>}
+                      </View>
+                      {item.createdAt && <Text className='item-date'>{item.createdAt}</Text>}
                       {item.notes && <Text className='item-notes'>{item.notes}</Text>}
                     </View>
                     <Text className='item-delete' onClick={() => handleDeleteItem(slotIndex, itemIndex)}>×</Text>

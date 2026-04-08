@@ -2,6 +2,7 @@ import { View, Text, Button } from '@tarojs/components'
 import Taro, { useRouter, useShareAppMessage, useDidShow } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
 import { getSpace, addRoom, addContainer, deleteRoom, createShareLink } from '../../services/space'
+import { normalizeItems } from '../../services/items'
 import './index.scss'
 
 export default function SpacePage() {
@@ -137,12 +138,16 @@ export default function SpacePage() {
                 {container.slots?.length || 0} 层
                 {container.movable ? ' · 可移动' : ''}
               </Text>
-              {container.slots?.map((slot: any, i: number) => (
-                <View key={i} className='slot-preview'>
-                  <Text className='slot-label'>{slot.label}:</Text>
-                  <Text className='slot-items'>{slot.items || '(空)'}</Text>
-                </View>
-              ))}
+              {container.slots?.map((slot: any, i: number) => {
+                const items = normalizeItems(slot.items)
+                const summary = items.length > 0 ? items.map(it => it.name).join('、') : '(空)'
+                return (
+                  <View key={i} className='slot-preview'>
+                    <Text className='slot-label'>{slot.label}:</Text>
+                    <Text className='slot-items'>{summary}</Text>
+                  </View>
+                )
+              })}
             </View>
           ))}
 

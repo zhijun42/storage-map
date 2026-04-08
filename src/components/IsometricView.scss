@@ -5,24 +5,23 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-$depth: 32px;
-$border-color: hsl(220, 20%, 22%);
+$depth: 28px;
+$border-color: hsl(220, 20%, 25%);
 
 .cabinet {
   position: relative;
-  margin-top: $depth;
-  margin-right: $depth;
-  margin-bottom: 8px;
+  margin-top: $depth + 4px;
+  margin-right: $depth + 4px;
+  margin-bottom: 12px;
 }
 
-// Top face: parallelogram above the front face
 .cabinet-top {
   position: absolute;
   top: -$depth;
   left: 0;
   width: 100%;
   height: $depth;
-  background: hsl(210, 8%, 92%);
+  background: hsl(210, 6%, 90%);
   border: 2px solid $border-color;
   border-bottom: none;
   transform-origin: bottom left;
@@ -30,14 +29,13 @@ $border-color: hsl(220, 20%, 22%);
   z-index: 2;
 }
 
-// Right side face: starts from the front's top edge, goes down
 .cabinet-side {
   position: absolute;
   top: 0;
   right: -$depth;
   width: $depth;
   height: 100%;
-  background: hsl(210, 8%, 88%);
+  background: hsl(210, 6%, 78%);
   border: 2px solid $border-color;
   border-left: none;
   transform-origin: top left;
@@ -45,29 +43,36 @@ $border-color: hsl(220, 20%, 22%);
   z-index: 0;
 }
 
-// Front face
+.cabinet-edge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1.5px solid $border-color;
+  z-index: 3;
+}
+
 .cabinet-front {
   position: relative;
-  border: 2.5px solid $border-color;
+  border: 2px solid $border-color;
   overflow: hidden;
-  min-height: 180px;
+  min-height: 160px;
+  background: #fff;
   z-index: 1;
 
-  // Vertical layout (default): slots stacked top to bottom
   &.vertical {
     display: flex;
     flex-direction: column;
   }
 
-  // Horizontal layout: slots side by side
   &.horizontal {
     display: flex;
     flex-direction: row;
 
     .slot {
       border-bottom: none;
-      border-right: 1px solid hsl(210, 10%, 82%);
-
+      border-right: 1.5px solid hsl(210, 6%, 78%);
       &:last-child { border-right: none; }
     }
   }
@@ -76,27 +81,104 @@ $border-color: hsl(220, 20%, 22%);
 .slot {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   position: relative;
-  border-bottom: 1px solid hsl(210, 10%, 82%);
+  border-bottom: 1.5px solid hsl(210, 6%, 78%);
   background: #fff;
   min-height: 40px;
+  padding: 8px;
 
   &:last-child { border-bottom: none; }
-
-  &:active { background: hsl(210, 12%, 94%); }
+  &:active { background: hsl(210, 10%, 94%); }
 
   &.highlighted {
     background: hsl(45, 100%, 92%);
     box-shadow: inset 0 0 0 2px hsl(45, 96%, 53%);
   }
 
+  // Closed/drawer — darker, inner shadow simulating door panel
   &.drawer {
-    background: hsl(210, 6%, 95%);
+    background: hsl(210, 4%, 87%);
+    box-shadow: inset 3px 3px 0 0 hsl(210, 6%, 80%), inset -3px -3px 0 0 hsl(210, 6%, 80%);
   }
 
-  .slot-label {
+  // Open shelf — inner perspective lines (thin gray)
+  &.open {
+    background: #fff;
+
+    .perspective-lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+
+      .line-top {
+        position: absolute;
+        top: 3px;
+        left: 4px;
+        right: 4px;
+        height: 0;
+        border-top: 1px solid hsl(210, 6%, 82%);
+      }
+
+      .line-left {
+        position: absolute;
+        top: 4px;
+        left: 3px;
+        bottom: 4px;
+        width: 0;
+        border-left: 1px solid hsl(210, 6%, 82%);
+      }
+
+      .line-right {
+        position: absolute;
+        top: 4px;
+        right: 3px;
+        bottom: 4px;
+        width: 0;
+        border-right: 1px solid hsl(210, 6%, 82%);
+      }
+
+      .line-bottom {
+        position: absolute;
+        bottom: 3px;
+        left: 4px;
+        right: 4px;
+        height: 0;
+        border-bottom: 1px solid hsl(210, 6%, 82%);
+      }
+    }
+  }
+
+  .drawer-handle {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid hsl(220, 12%, 45%);
+    background: transparent;
+    margin-bottom: 4px;
+  }
+
+  .slot-category {
+    font-size: 18px;
+    color: hsl(220, 12%, 40%);
+    text-align: center;
+    font-weight: 500;
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.cabinet-dims {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+
+  .dim-text {
     font-size: 20px;
     color: hsl(215, 10%, 50%);
   }

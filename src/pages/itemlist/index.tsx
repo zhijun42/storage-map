@@ -5,8 +5,11 @@ import { getSpaces, getSpace } from '../../services/space'
 import { normalizeItems } from '../../services/items'
 import './index.scss'
 
+type ViewMode = 'items' | 'rooms'
+
 interface ListItem {
   name: string
+  category: string
   roomName: string
   containerName: string
   slotLabel: string
@@ -16,21 +19,21 @@ interface ListItem {
 }
 
 export default function ItemListPage() {
+  const [viewMode, setViewMode] = useState<ViewMode>('items')
   const [allItems, setAllItems] = useState<ListItem[]>([])
+  const [spaces, setSpaces] = useState<any[]>([])
   const [roomFilter, setRoomFilter] = useState('全部')
   const [loading, setLoading] = useState(true)
 
-  useDidShow(() => { loadAllItems() })
+  useDidShow(() => { loadAllData() })
 
-  async function loadAllItems() {
+  async function loadAllData() {
     setLoading(true)
-    const spaces = await getSpaces()
-    if (spaces.length === 0) { setLoading(false); return }
+    const spacesList = await getSpaces()
+    if (spacesList.length === 0) { setLoading(false); return }
 
-    // Load all spaces in parallel
-    const fullSpaces = await Promise.all(
-      spaces.map((s: any) => getSpace(s._id))
-    )
+    const fullSpaces = await Promise.all(spacesList.map((s: any) => getSpace(s._id)))
+    setSpaces(fullSpaces.filter(Boolean))
 
     const items: ListItem[] = []
     fullSpaces.forEach((space: any) => {
@@ -41,6 +44,7 @@ export default function ItemListPage() {
             normalizeItems(slot.items).forEach((item) => {
               items.push({
                 name: item.name,
+                category: item.category || '',
                 roomName: room.name,
                 containerName: container.name,
                 slotLabel: slot.label,
@@ -62,9 +66,7 @@ export default function ItemListPage() {
     return ['全部', ...set]
   }, [allItems])
 
-  const filtered = roomFilter === '全部'
-    ? allItems
-    : allItems.filter(i => i.roomName === roomFilter)
+  const filtered = roomFilter === '全部' ? allItems : allItems.filter(i => i.roomName === roomFilter)
 
   function handleItemClick(item: ListItem) {
     Taro.navigateTo({
@@ -72,44 +74,83 @@ export default function ItemListPage() {
     })
   }
 
+  function handleOpenContainer(spaceId: string, roomId: string, containerId: string) {
+    Taro.navigateTo({
+      url: `/pages/container/index?spaceId=${spaceId}&roomId=${roomId}&containerId=${containerId}`,
+    })
+  }
+
   return (
     <View className='itemlist-page'>
-      <View className='filter-bar'>
-        <Picker
-          mode='selector'
-          range={rooms}
-          onChange={(e) => setRoomFilter(rooms[Number(e.detail.value)])}
-        >
-          <View className='filter-chip'>
-            <Text>{roomFilter === '全部' ? '全部房间' : roomFilter}</Text>
-            <Text className='arrow'>▾</Text>
-          </View>
-        </Picker>
-        <Text className='count'>{filtered.length} 件物品</Text>
+      {/* View mode toggle */}
+      <View className='mode-toggle'>
+        <View className={`mode-btn ${viewMode === 'rooms' ? 'active' : ''}`} onClick={() => setViewMode('rooms')}>
+          <Text>按房间</Text>
+        </View>
+        <View className={`mode-btn ${viewMode === 'items' ? 'active' : ''}`} onClick={() => setViewMode('items')}>
+          <Text>按物品</Text>
+        </View>
       </View>
 
-      {loading && (
-        <View className='empty'><Text>加载中...</Text></View>
-      )}
+      {loading && <View className='empty'><Text>加载中...</Text></View>}
 
-      {!loading && (
-        <View className='item-list'>
-          {filtered.map((item, index) => (
-            <View key={index} className='item-card' onClick={() => handleItemClick(item)}>
-              <View className='item-icon'>
-                <Text className='icon-text'>{item.name.slice(0, 1)}</Text>
+      {/* Items view */}
+      {!loading && viewMode === 'items' && (
+        <View>
+          <View className='filter-bar'>
+            <Picker mode='selector' range={rooms} onChange={(e) => setRoomFilter(rooms[Number(e.detail.value)])}>
+              <View className='filter-chip'>
+                <Text>{roomFilter === '全部' ? '全部房间' : roomFilter}</Text>
+                <Text className='arrow'>▾</Text>
               </View>
-              <View className='item-info'>
-                <Text className='item-name'>{item.name}</Text>
-                <Text className='item-location'>{item.roomName} · {item.containerName} · {item.slotLabel}</Text>
+            </Picker>
+            <Text className='count'>{filtered.length} 件物品</Text>
+          </View>
+
+          <View className='item-list'>
+            {filtered.map((item, index) => (
+              <View key={index} className='item-card' onClick={() => handleItemClick(item)}>
+                <View className='item-icon'>
+                  <Text className='icon-text'>{item.name.slice(0, 1)}</Text>
+                </View>
+                <View className='item-info'>
+                  <Text className='item-name'>{item.name}</Text>
+                  {item.category && <Text className='item-category'>{item.category}</Text>}
+                  <Text className='item-location'>{item.roomName} · {item.containerName} · {item.slotLabel}</Text>
+                </View>
               </View>
-            </View>
-          ))}
-          {filtered.length === 0 && (
-            <View className='empty'><Text>暂无匹配物品</Text></View>
-          )}
+            ))}
+            {filtered.length === 0 && <View className='empty'><Text>暂无匹配物品</Text></View>}
+          </View>
         </View>
       )}
+
+      {/* Rooms view (manage space) */}
+      {!loading && viewMode === 'rooms' && spaces.map((space: any) => (
+        <View key={space._id} className='rooms-view'>
+          {space.rooms?.map((room: any) => (
+            <View key={room._id} className='room-section'>
+              <Text className='room-title'>{room.name}</Text>
+              {room.containers?.map((container: any) => (
+                <View key={container._id} className='container-card'
+                  onClick={() => handleOpenContainer(space._id, room._id, container._id)}>
+                  <Text className='container-name'>{container.name}</Text>
+                  <Text className='container-slots'>{container.slots?.length || 0} 层</Text>
+                  {container.slots?.map((slot: any, i: number) => {
+                    const items = normalizeItems(slot.items)
+                    return (
+                      <View key={i} className='slot-preview'>
+                        <Text className='slot-label'>{slot.label}:</Text>
+                        <Text className='slot-items'>{items.length > 0 ? items.map(it => it.name).join('、') : '(空)'}</Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+      ))}
     </View>
   )
 }

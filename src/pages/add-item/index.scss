@@ -1,0 +1,84 @@
+.add-item-page {
+  padding: 24px 32px;
+  padding-bottom: 60px;
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+
+  .field {
+    .label {
+      font-size: 26px;
+      font-weight: 600;
+      color: hsl(220, 25%, 10%);
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .input-wrap {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      border: 1px solid hsl(210, 12%, 92%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+      &.readonly {
+        background: hsl(210, 12%, 97%);
+      }
+    }
+
+    .field-input {
+      width: 100%;
+      font-size: 28px;
+      line-height: 1.4;
+    }
+
+    .field-value {
+      font-size: 28px;
+      color: hsl(215, 10%, 46%);
+    }
+
+    .picker-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      border: 1px solid hsl(210, 12%, 92%);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+      .picker-text {
+        font-size: 28px;
+        color: hsl(220, 25%, 10%);
+
+        &.placeholder { color: hsl(215, 10%, 60%); }
+      }
+
+      .picker-arrow {
+        font-size: 24px;
+        color: hsl(215, 10%, 46%);
+      }
+    }
+  }
+
+  .save-btn {
+    width: 100%;
+    padding: 28px;
+    background: hsl(217, 91%, 60%);
+    border-radius: 999px;
+    text-align: center;
+
+    &:active { opacity: 0.9; }
+    &.disabled { opacity: 0.5; pointer-events: none; }
+
+    .save-btn-text {
+      font-size: 30px;
+      font-weight: 600;
+      color: #fff;
+    }
+  }
+}

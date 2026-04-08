@@ -1,0 +1,111 @@
+import { View, Text, Input, Picker } from '@tarojs/components'
+import Taro, { useRouter } from '@tarojs/taro'
+import { useState } from 'react'
+import { getSpace, updateContainer } from '../../services/space'
+import { normalizeItems, serializeItems, CATEGORIES } from '../../services/items'
+import './index.scss'
+
+export default function AddItemPage() {
+  const router = useRouter()
+  const { spaceId = '', roomId = '', containerId = '', slotIndex: slotIndexStr = '0' } = router.params
+  const slotIndex = Number(slotIndexStr)
+
+  const [name, setName] = useState('')
+  const [categoryIndex, setCategoryIndex] = useState(-1)
+  const [price, setPrice] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  async function handleSave() {
+    if (!name.trim()) {
+      Taro.showToast({ title: '请输入物品名称', icon: 'none' })
+      return
+    }
+    if (categoryIndex < 0) {
+      Taro.showToast({ title: '请选择物品类型', icon: 'none' })
+      return
+    }
+
+    setSaving(true)
+    const space = await getSpace(spaceId)
+    if (!space) { setSaving(false); return }
+    const room = space.rooms?.find((r: any) => r._id === roomId)
+    if (!room) { setSaving(false); return }
+    const container = room.containers?.find((c: any) => c._id === containerId)
+    if (!container) { setSaving(false); return }
+
+    const updatedSlots = [...container.slots]
+    const items = normalizeItems(updatedSlots[slotIndex].items)
+    items.push({
+      name: name.trim(),
+      category: CATEGORIES[categoryIndex],
+      price: price.trim() || '',
+      createdAt: today,
+      photo: '',
+      notes: notes.trim(),
+    })
+    updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(items) }
+    await updateContainer(spaceId, roomId, containerId, { slots: updatedSlots })
+
+    setSaving(false)
+    Taro.showToast({ title: '已添加', icon: 'success' })
+    setTimeout(() => Taro.navigateBack(), 800)
+  }
+
+  return (
+    <View className='add-item-page'>
+      <View className='form'>
+        {/* Name — required */}
+        <View className='field'>
+          <Text className='label'>物品名称 *</Text>
+          <View className='input-wrap'>
+            <Input className='field-input' placeholder='请输入名称' value={name} onInput={e => setName(e.detail.value)} />
+          </View>
+        </View>
+
+        {/* Category — required */}
+        <View className='field'>
+          <Text className='label'>物品类型 *</Text>
+          <Picker mode='selector' range={CATEGORIES} onChange={e => setCategoryIndex(Number(e.detail.value))}>
+            <View className='picker-wrap'>
+              <Text className={`picker-text ${categoryIndex >= 0 ? '' : 'placeholder'}`}>
+                {categoryIndex >= 0 ? CATEGORIES[categoryIndex] : '请选择类型'}
+              </Text>
+              <Text className='picker-arrow'>▾</Text>
+            </View>
+          </Picker>
+        </View>
+
+        {/* Price — optional */}
+        <View className='field'>
+          <Text className='label'>价格（选填）</Text>
+          <View className='input-wrap'>
+            <Input className='field-input' type='digit' placeholder='¥' value={price} onInput={e => setPrice(e.detail.value)} />
+          </View>
+        </View>
+
+        {/* Date — auto */}
+        <View className='field'>
+          <Text className='label'>录入日期</Text>
+          <View className='input-wrap readonly'>
+            <Text className='field-value'>{today}</Text>
+          </View>
+        </View>
+
+        {/* Notes — optional */}
+        <View className='field'>
+          <Text className='label'>备注（选填）</Text>
+          <View className='input-wrap'>
+            <Input className='field-input' placeholder='如：户外专用、夏天使用' value={notes} onInput={e => setNotes(e.detail.value)} />
+          </View>
+        </View>
+      </View>
+
+      <View className={`save-btn ${saving ? 'disabled' : ''}`} onClick={handleSave}>
+        <Text className='save-btn-text'>{saving ? '保存中...' : '添加物品'}</Text>
+      </View>
+    </View>
+  )
+}

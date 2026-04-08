@@ -2,6 +2,31 @@
   padding: 24px 32px;
   padding-bottom: 32px;
 
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    background: hsl(210, 12%, 96%);
+    border-radius: 999px;
+    padding: 4px;
+
+    .mode-btn {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      border-radius: 999px;
+      font-size: 26px;
+      color: hsl(215, 10%, 46%);
+
+      &.active {
+        background: #fff;
+        color: hsl(220, 25%, 10%);
+        font-weight: 600;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+    }
+  }
+
   .filter-bar {
     display: flex;
     justify-content: space-between;
@@ -18,14 +43,9 @@
       font-size: 24px;
       color: hsl(220, 25%, 10%);
       border: 1px solid hsl(210, 12%, 92%);
-
       .arrow { font-size: 20px; color: hsl(215, 10%, 46%); }
     }
-
-    .count {
-      font-size: 24px;
-      color: hsl(215, 10%, 46%);
-    }
+    .count { font-size: 24px; color: hsl(215, 10%, 46%); }
   }
 
   .item-card {
@@ -34,59 +54,59 @@
     padding: 24px;
     background: #fff;
     border-radius: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     align-items: center;
-
     &:active { opacity: 0.85; }
 
     .item-icon {
-      width: 80px;
-      height: 80px;
-      border-radius: 16px;
+      width: 72px; height: 72px; border-radius: 16px;
       background: hsl(210, 12%, 96%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-
-      .icon-text {
-        font-size: 32px;
-        color: hsl(215, 10%, 46%);
-        font-weight: 600;
-      }
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      .icon-text { font-size: 32px; color: hsl(215, 10%, 46%); font-weight: 600; }
     }
 
     .item-info {
-      flex: 1;
-      min-width: 0;
+      flex: 1; min-width: 0;
+      .item-name { font-size: 28px; font-weight: 600; color: hsl(220, 25%, 10%); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .item-category { font-size: 20px; color: hsl(217, 91%, 55%); display: inline-block; background: hsl(217, 91%, 96%); padding: 2px 10px; border-radius: 6px; margin-top: 4px; }
+      .item-location { font-size: 22px; color: hsl(215, 10%, 46%); display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+  }
 
-      .item-name {
-        font-size: 28px;
-        font-weight: 600;
+  // Rooms view
+  .rooms-view {
+    .room-section {
+      margin-bottom: 24px;
+
+      .room-title {
+        font-size: 30px;
+        font-weight: 700;
         color: hsl(220, 25%, 10%);
         display: block;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        margin-bottom: 12px;
       }
+    }
 
-      .item-location {
-        font-size: 22px;
-        color: hsl(215, 10%, 46%);
-        display: block;
-        margin-top: 4px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    .container-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      &:active { opacity: 0.85; }
+
+      .container-name { font-size: 28px; font-weight: 600; color: hsl(220, 25%, 10%); display: block; }
+      .container-slots { font-size: 22px; color: hsl(215, 10%, 46%); display: block; margin-bottom: 8px; }
+
+      .slot-preview {
+        display: flex; gap: 8px; padding: 6px 0;
+        border-top: 1px solid hsl(210, 12%, 93%);
+        .slot-label { font-size: 22px; color: hsl(215, 10%, 46%); min-width: 80px; }
+        .slot-items { font-size: 22px; color: hsl(220, 25%, 10%); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       }
     }
   }
 
-  .empty {
-    text-align: center;
-    padding: 120px 0;
-    color: hsl(215, 10%, 46%);
-    font-size: 28px;
-  }
+  .empty { text-align: center; padding: 80px 0; color: hsl(215, 10%, 46%); font-size: 28px; }
 }

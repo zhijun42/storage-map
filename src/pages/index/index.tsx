@@ -20,19 +20,6 @@ export default function Index() {
     }
   }
 
-  async function handleCreateSpace() {
-    const res = await Taro.showModal({
-      title: '创建新空间',
-      editable: true,
-      placeholderText: '请输入空间名称',
-    } as any)
-    if (res.confirm && (res as any).content) {
-      const { createSpace } = await import('../../services/space')
-      await createSpace((res as any).content)
-      loadSpaces()
-    }
-  }
-
   function handleContainerClick(roomId: string, containerId: string) {
     if (!activeSpace) return
     Taro.navigateTo({
@@ -40,17 +27,8 @@ export default function Index() {
     })
   }
 
-  function handleOpenSearch() {
-    Taro.navigateTo({ url: '/pages/search/index' })
-  }
-
-  function handleOpenSpace(spaceId: string) {
-    Taro.navigateTo({ url: `/pages/space/index?id=${spaceId}` })
-  }
-
   return (
     <View className='index-page'>
-      {/* Floor plan */}
       {activeSpace && activeSpace.rooms?.length > 0 && (
         <View className='floorplan-section'>
           <FloorplanView
@@ -60,21 +38,13 @@ export default function Index() {
         </View>
       )}
 
-      {/* Action buttons */}
       <View className='actions'>
-        <View className='action-btn' onClick={handleOpenSearch}>
+        <View className='action-btn' onClick={() => Taro.navigateTo({ url: '/pages/search/index' })}>
           <Text className='action-text'>物品查询</Text>
         </View>
-        {spaces.length > 0 && (
-          <View className='action-btn' onClick={() => handleOpenSpace(spaces[0]._id)}>
-            <Text className='action-text'>管理空间</Text>
-          </View>
-        )}
-        {spaces.length === 0 && (
-          <View className='action-btn primary' onClick={handleCreateSpace}>
-            <Text className='action-text-primary'>创建新空间</Text>
-          </View>
-        )}
+        <View className='action-btn' onClick={() => Taro.navigateTo({ url: '/pages/capture/index' })}>
+          <Text className='action-text'>拍照录入</Text>
+        </View>
       </View>
     </View>
   )
