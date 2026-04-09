@@ -168,6 +168,19 @@ export async function initExampleSpace() {
   Taro.setStorageSync('drawn_floorplan', JSON.stringify(floorplan))
   Taro.setStorageSync('rect_container_map', JSON.stringify(rectContainerMap))
 
+  // Save draw_all_rects so the draw-editor can load existing layout
+  const drawRects: any[] = []
+  EXAMPLE_ROOMS.forEach((r, i) => {
+    drawRects.push({ id: `room_${i}`, x: r.x, y: r.y, w: r.w, h: r.h, labels: [r.name], slotType: 'open', phase: 'room' })
+  })
+  EXAMPLE_FURNITURE.forEach((f, i) => {
+    drawRects.push({ id: `furn_${i}`, x: f.x, y: f.y, w: f.w, h: f.h, labels: [f.name], slotType: 'open', phase: 'furniture' })
+  })
+  EXAMPLE_CABINETS.forEach((c, i) => {
+    drawRects.push({ id: `example_cab_${i}`, x: c.x, y: c.y, w: c.w, h: c.h, labels: [c.name], slotType: 'open', phase: 'cabinet' })
+  })
+  Taro.setStorageSync('draw_all_rects', JSON.stringify(drawRects))
+
   const totalItems = EXAMPLE_CABINETS.reduce((sum, cab) =>
     sum + Object.values(cab.items).reduce((s: number, arr: any) => s + arr.length, 0), 0)
 

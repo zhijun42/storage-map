@@ -173,6 +173,28 @@ export default function DrawEditor() {
             .boundingClientRect().exec((b) => {
               if (b?.[0]) boundsRef.current = { left: b[0].left, top: b[0].top }
             })
+
+          // Auto-fit viewport to existing content
+          const rects = allRectsRef.current
+          if (rects.length > 0) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+            rects.forEach(r => {
+              minX = Math.min(minX, r.x); minY = Math.min(minY, r.y)
+              maxX = Math.max(maxX, r.x + r.w); maxY = Math.max(maxY, r.y + r.h)
+            })
+            const contentW = maxX - minX || 1
+            const contentH = maxY - minY || 1
+            const pad = 40
+            const scaleX = (cw - pad * 2) / contentW
+            const scaleY = (ch - pad * 2) / contentH
+            const fitScale = Math.min(scaleX, scaleY, 3)
+            viewRef.current = {
+              scale: fitScale,
+              ox: (cw - contentW * fitScale) / 2 - minX * fitScale,
+              oy: (ch - contentH * fitScale) / 2 - minY * fitScale,
+            }
+          }
+
           renderCanvas()
         })
     } catch (e) {
