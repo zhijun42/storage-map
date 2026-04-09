@@ -5,7 +5,7 @@ import {
   getSpaces, getSpace, createSpace, deleteSpace,
   addRoom, deleteRoom,
   addContainer, updateContainer, deleteContainer,
-  searchItems, moveItem,
+  searchItems, moveItem, moveItems,
 } from '../services/space'
 
 beforeEach(() => {
@@ -464,5 +464,84 @@ describe('moveItem', () => {
     // Source slots should be reduced
     expect(space.rooms[0].containers[0].slots[0].items).toHaveLength(1)
     expect(space.rooms[0].containers[0].slots[1].items).toHaveLength(0)
+  })
+})
+
+describe('moveItems (batch)', () => {
+  let spaceId: string
+  let roomId1: string
+  let roomId2: string
+  let containerId1: string
+  let containerId2: string
+
+  beforeEach(async () => {
+    const space = await createSpace('我的家')
+    spaceId = space._id
+    const room1 = await addRoom(spaceId, '主卧')
+    roomId1 = room1!._id
+    const room2 = await addRoom(spaceId, '客厅')
+    roomId2 = room2!._id
+
+    const c1 = await addContainer(spaceId, roomId1, {
+      name: '衣柜', type: 'wardrobe',
+      slots: [
+        { label: '第1层', type: 'shelf', photo: '', items: [
+          { name: '羽绒服', category: '衣物', price: '899', createdAt: '2026-04-09', photo: '', notes: '' },
+          { name: '风衣', category: '衣物', price: '650', createdAt: '2026-04-09', photo: '', notes: '' },
+          { name: '运动鞋', category: '鞋包', price: '799', createdAt: '2026-04-09', photo: '', notes: '' },
+        ]},
+      ],
+    })
+    containerId1 = c1!._id
+
+    const c2 = await addContainer(spaceId, roomId2, {
+      name: '书架', type: 'shelf',
+      slots: [
+        { label: '上层', type: 'shelf', photo: '', items: [
+          { name: 'iPad', category: '数码', price: '6799', createdAt: '2026-04-09', photo: '', notes: '' },
+        ]},
+      ],
+    })
+    containerId2 = c2!._id
+  })
+
+  it('moves multiple items at once', async () => {
+    const result = await moveItems(spaceId, roomId1, containerId1, 0, [0, 1], roomId2, containerId2, 0)
+    expect(result).toBe(true)
+
+    const space = await getSpace(spaceId)
+    expect(space.rooms[0].containers[0].slots[0].items).toHaveLength(1)
+    expect(space.rooms[0].containers[0].slots[0].items[0].name).toBe('运动鞋')
+
+    const dest = space.rooms[1].containers[0].slots[0].items
+    expect(dest).toHaveLength(3)
+    expect(dest.map((i: any) => i.name)).toEqual(['iPad', '羽绒服', '风衣'])
+  })
+
+  it('moves all items from a slot', async () => {
+    const result = await moveItems(spaceId, roomId1, containerId1, 0, [0, 1, 2], roomId2, containerId2, 0)
+    expect(result).toBe(true)
+
+    const space = await getSpace(spaceId)
+    expect(space.rooms[0].containers[0].slots[0].items).toHaveLength(0)
+    expect(space.rooms[1].containers[0].slots[0].items).toHaveLength(4)
+  })
+
+  it('preserves item order in destination', async () => {
+    await moveItems(spaceId, roomId1, containerId1, 0, [0, 2], roomId2, containerId2, 0)
+
+    const space = await getSpace(spaceId)
+    const dest = space.rooms[1].containers[0].slots[0].items
+    expect(dest.map((i: any) => i.name)).toEqual(['iPad', '羽绒服', '运动鞋'])
+  })
+
+  it('returns false for empty indexes', async () => {
+    const result = await moveItems(spaceId, roomId1, containerId1, 0, [], roomId2, containerId2, 0)
+    expect(result).toBe(false)
+  })
+
+  it('returns false if any index is out of range', async () => {
+    const result = await moveItems(spaceId, roomId1, containerId1, 0, [0, 99], roomId2, containerId2, 0)
+    expect(result).toBe(false)
   })
 })

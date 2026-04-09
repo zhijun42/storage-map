@@ -266,6 +266,54 @@ export async function moveItem(
   return true
 }
 
+export async function moveItems(
+  spaceId: string,
+  fromRoomId: string, fromContainerId: string, fromSlotIndex: number, itemIndexes: number[],
+  toRoomId: string, toContainerId: string, toSlotIndex: number,
+) {
+  if (itemIndexes.length === 0) return false
+
+  const data = getData()
+  const space = data.spaces.find((s: any) => s._id === spaceId)
+  if (!space) return false
+
+  const fromRoom = space.rooms.find((r: any) => r._id === fromRoomId)
+  const toRoom = space.rooms.find((r: any) => r._id === toRoomId)
+  if (!fromRoom || !toRoom) return false
+
+  const fromContainer = fromRoom.containers.find((c: any) => c._id === fromContainerId)
+  const toContainer = toRoom.containers.find((c: any) => c._id === toContainerId)
+  if (!fromContainer || !toContainer) return false
+
+  const fromSlot = fromContainer.slots?.[fromSlotIndex]
+  const toSlot = toContainer.slots?.[toSlotIndex]
+  if (!fromSlot || !toSlot) return false
+
+  const fromItems = normalizeItems(fromSlot.items)
+  const sorted = [...itemIndexes].sort((a, b) => b - a)
+  if (sorted.some(i => i < 0 || i >= fromItems.length)) return false
+
+  const movedItems = sorted.map(i => fromItems.splice(i, 1)[0])
+  movedItems.reverse()
+
+  fromSlot.items = serializeItems(fromItems)
+
+  const toItems = normalizeItems(toSlot.items)
+  toItems.push(...movedItems)
+  toSlot.items = serializeItems(toItems)
+
+  saveData(data)
+
+  syncToCloud('moveItems:updateFrom', () =>
+    cloudService.cloudUpdateContainer(spaceId, fromRoomId, fromContainerId, { slots: fromContainer.slots }))
+  if (fromContainerId !== toContainerId) {
+    syncToCloud('moveItems:updateTo', () =>
+      cloudService.cloudUpdateContainer(spaceId, toRoomId, toContainerId, { slots: toContainer.slots }))
+  }
+
+  return true
+}
+
 // ===== Photo =====
 
 export async function uploadPhoto(filePath: string, containerId: string, slotIndex: number): Promise<string> {

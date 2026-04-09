@@ -14,10 +14,12 @@ export default function ContainerPage() {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
   const [expandedItem, setExpandedItem] = useState<string | null>(null)
   const [editValues, setEditValues] = useState<Partial<Item>>({})
+  const [batchSlot, setBatchSlot] = useState<number | null>(null)
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set())
   const decodedQuery = searchQuery ? decodeURIComponent(searchQuery) : ''
 
   useEffect(() => { loadContainer() }, [])
-  useDidShow(() => { loadContainer(); setExpandedItem(null); setEditValues({}) })
+  useDidShow(() => { loadContainer(); setExpandedItem(null); setEditValues({}); setBatchSlot(null); setSelectedItems(new Set()) })
 
   async function loadContainer() {
     const space = await getSpace(spaceId)
@@ -188,7 +190,15 @@ export default function ContainerPage() {
             <View key={slotIndex} className='slot-card'>
               <View className='slot-header'>
                 <Text className='slot-label'>{slotDisplayName}</Text>
-                <Text className='action-btn delete' onClick={() => handleDeleteSlot(slotIndex)}>删除层</Text>
+                <View className='slot-actions'>
+                  {items.length > 0 && batchSlot !== slotIndex && (
+                    <Text className='action-btn' onClick={() => { setBatchSlot(slotIndex); setSelectedItems(new Set()); setExpandedItem(null) }}>批量移动</Text>
+                  )}
+                  {batchSlot === slotIndex && (
+                    <Text className='action-btn' onClick={() => { setBatchSlot(null); setSelectedItems(new Set()) }}>取消</Text>
+                  )}
+                  <Text className='action-btn delete' onClick={() => handleDeleteSlot(slotIndex)}>删除层</Text>
+                </View>
               </View>
 
               {/* Item cards */}
@@ -197,13 +207,30 @@ export default function ContainerPage() {
                   const isSearchMatch = decodedQuery && item.name.toLowerCase().includes(decodedQuery.toLowerCase())
                   const itemKey = `${slotIndex}-${itemIndex}`
                   const isExpanded = expandedItem === itemKey
+                  const isBatchMode = batchSlot === slotIndex
+                  const isSelected = isBatchMode && selectedItems.has(itemIndex)
                   return (
-                  <View key={itemIndex} className={`item-card ${isSearchMatch ? 'search-highlight' : ''} ${isExpanded ? 'expanded' : ''}`}>
-                    <View className='item-card-header' onClick={() => toggleExpandItem(slotIndex, itemIndex)}>
+                  <View key={itemIndex} className={`item-card ${isSearchMatch ? 'search-highlight' : ''} ${isExpanded ? 'expanded' : ''} ${isSelected ? 'selected' : ''}`}>
+                    <View className='item-card-header' onClick={() => {
+                      if (isBatchMode) {
+                        setSelectedItems(prev => {
+                          const next = new Set(prev)
+                          next.has(itemIndex) ? next.delete(itemIndex) : next.add(itemIndex)
+                          return next
+                        })
+                      } else {
+                        toggleExpandItem(slotIndex, itemIndex)
+                      }
+                    }}>
+                      {isBatchMode && (
+                        <View className={`batch-checkbox ${isSelected ? 'checked' : ''}`}>
+                          {isSelected && <Text className='check-mark'>✓</Text>}
+                        </View>
+                      )}
                       {item.photo ? (
-                        <Image className='item-photo' src={item.photo} mode='aspectFill' onClick={(e) => { e.stopPropagation(); handleItemPhoto(slotIndex, itemIndex) }} />
+                        <Image className='item-photo' src={item.photo} mode='aspectFill' onClick={(e) => { if (!isBatchMode) { e.stopPropagation(); handleItemPhoto(slotIndex, itemIndex) } }} />
                       ) : (
-                        <View className='item-photo-placeholder' onClick={(e) => { e.stopPropagation(); handleItemPhoto(slotIndex, itemIndex) }}>
+                        <View className='item-photo-placeholder' onClick={(e) => { if (!isBatchMode) { e.stopPropagation(); handleItemPhoto(slotIndex, itemIndex) } }}>
                           <Text className='photo-icon'>📷</Text>
                         </View>
                       )}
@@ -214,7 +241,7 @@ export default function ContainerPage() {
                           {item.price && <Text className='item-price'>¥{item.price}</Text>}
                         </View>
                       </View>
-                      <Text className={`item-expand-arrow ${isExpanded ? 'rotated' : ''}`}>›</Text>
+                      {!isBatchMode && <Text className={`item-expand-arrow ${isExpanded ? 'rotated' : ''}`}>›</Text>}
                     </View>
 
                     {isExpanded && (
@@ -269,6 +296,20 @@ export default function ContainerPage() {
       <Button className='add-slot-btn' onClick={handleAddSlot}>
         + 添加分层
       </Button>
+
+      {batchSlot !== null && selectedItems.size > 0 && (
+        <View className='batch-bar'>
+          <Text className='batch-count'>已选 {selectedItems.size} 件</Text>
+          <View className='batch-move-btn' onClick={() => {
+            const indexes = [...selectedItems].sort((a, b) => a - b).join(',')
+            Taro.navigateTo({
+              url: `/pages/move-item/index?spaceId=${spaceId}&roomId=${roomId}&containerId=${containerId}&slotIndex=${batchSlot}&itemIndexes=${indexes}`,
+            })
+          }}>
+            <Text className='batch-move-text'>移动到...</Text>
+          </View>
+        </View>
+      )}
     </View>
   )
 }

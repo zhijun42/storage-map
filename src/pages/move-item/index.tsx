@@ -1,7 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { getSpace, moveItem } from '../../services/space'
+import { getSpace, moveItem, moveItems } from '../../services/space'
 import { normalizeItems } from '../../services/items'
 import FloorplanView from '../../components/FloorplanView'
 import IsometricView from '../../components/IsometricView'
@@ -11,10 +11,12 @@ export default function MoveItemPage() {
   const router = useRouter()
   const {
     spaceId = '', roomId = '', containerId = '',
-    slotIndex: si = '0', itemIndex: ii = '0',
+    slotIndex: si = '0', itemIndex: ii = '0', itemIndexes: iiMulti = '',
   } = router.params
   const slotIndex = Number(si)
   const itemIndex = Number(ii)
+  const isBatch = !!iiMulti
+  const batchIndexes = isBatch ? iiMulti.split(',').map(Number) : [itemIndex]
 
   const [space, setSpace] = useState<any>(null)
   const [itemName, setItemName] = useState('')
@@ -34,7 +36,11 @@ export default function MoveItemPage() {
     const fromSlot = fromContainer?.slots?.[slotIndex]
     if (fromSlot) {
       const items = normalizeItems(fromSlot.items)
-      if (items[itemIndex]) setItemName(items[itemIndex].name)
+      if (isBatch) {
+        setItemName(`${batchIndexes.length} 件物品`)
+      } else if (items[itemIndex]) {
+        setItemName(items[itemIndex].name)
+      }
     }
   }
 
@@ -63,11 +69,9 @@ export default function MoveItemPage() {
     }
 
     setMoving(true)
-    const success = await moveItem(
-      spaceId,
-      roomId, containerId, slotIndex, itemIndex,
-      selectedRoomId, selectedContainerId, targetSlotIndex,
-    )
+    const success = isBatch
+      ? await moveItems(spaceId, roomId, containerId, slotIndex, batchIndexes, selectedRoomId, selectedContainerId, targetSlotIndex)
+      : await moveItem(spaceId, roomId, containerId, slotIndex, itemIndex, selectedRoomId, selectedContainerId, targetSlotIndex)
     setMoving(false)
 
     if (success) {
