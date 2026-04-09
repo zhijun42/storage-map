@@ -205,11 +205,7 @@ export default function IsometricFloorplanView({ rooms, spaceId, highlightContai
       maxX = Math.max(maxX, rx + rw); maxZ = Math.max(maxZ, rz + rd)
 
       // Floor
-      const floorGeo = new THREE.BoxGeometry(rw, 0.02, rd)
-      const floorMat = new THREE.MeshLambertMaterial({ color: 0xf8f9fb })
-      const floor = new THREE.Mesh(floorGeo, floorMat)
-      floor.position.set(rx + rw / 2, 0.01, rz + rd / 2)
-      scene.add(floor)
+      // Room floor removed — ground plane provides the base
 
       // Collect walls with dedup key (rounded position)
       const wallT = 0.05
@@ -229,25 +225,117 @@ export default function IsometricFloorplanView({ rooms, spaceId, highlightContai
       })
     })
 
-    // Render deduplicated walls
-    const wallH = ROOM_WALL_H * MM_TO_M
-    const wallMat = new THREE.MeshLambertMaterial({ color: 0xc8ccd0, transparent: true, opacity: 0.25 })
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0x8a9099 })
-
-    wallSegments.forEach(w => {
-      const geo = new THREE.BoxGeometry(w.sx, wallH, w.sz)
-      const mesh = new THREE.Mesh(geo, wallMat)
-      mesh.position.set(w.px, wallH / 2, w.pz)
-      scene.add(mesh)
-      const edges = new THREE.EdgesGeometry(geo)
-      const line = new THREE.LineSegments(edges, edgeMat)
-      line.position.copy(mesh.position)
-      scene.add(line)
+    // Collect all doors/windows from floorplan data
+    const allDoorWindows: { x: number; y: number; width: number; direction?: string; type: string }[] = []
+    floorplan.rooms.forEach((room: any) => {
+      ;(room.doors || []).forEach((d: any) => allDoorWindows.push({ ...d, type: 'door' }))
+      ;(room.windows || []).forEach((w: any) => allDoorWindows.push({ ...w, type: 'window' }))
     })
 
-    // Furniture
+    // Render deduplicated walls with door/window gaps
+    const wallH = ROOM_WALL_H * MM_TO_M
+    const DOOR_H = 2.1 // meters
+    const WIN_BOTTOM = 1.0; const WIN_H = 1.0
+    const wallT = 0.05
+    const wallMat = new THREE.MeshLambertMaterial({ color: 0xc8ccd0, transparent: true, opacity: 0.25 })
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x8a9099 })
+    const glassMat = new THREE.MeshLambertMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.25 })
+
+    function addWallBox(px: number, py: number, pz: number, sx: number, sy: number, sz: number, showEdges = false) {
+      const geo = new THREE.BoxGeometry(sx, sy, sz)
+      const mesh = new THREE.Mesh(geo, wallMat)
+      mesh.position.set(px, py, pz)
+      scene.add(mesh)
+      if (showEdges) {
+        const edges = new THREE.EdgesGeometry(geo)
+        const line = new THREE.LineSegments(edges, edgeMat)
+        line.position.copy(mesh.position)
+        scene.add(line)
+      }
+    }
+
+    wallSegments.forEach(w => {
+      // Find door/windows on this wall segment (matching by coordinate proximity)
+      const isH = w.sz < w.sx // horizontal wall
+      const wallCoordMM = isH ? w.pz / MM_TO_M : w.px / MM_TO_M
+      // Match doors/windows to this wall segment by coordinate + direction
+      const wallFixedCoord = isH ? w.pz : w.px
+      const wallRangeStart = isH ? w.px - w.sx / 2 : w.pz - w.sz / 2
+      const wallRangeEnd = isH ? w.px + w.sx / 2 : w.pz + w.sz / 2
+      const gaps = allDoorWindows.filter(dw => {
+        const dwFixedCoord = dw.y * MM_TO_M
+        const dwAlongStart = dw.x * MM_TO_M
+        // Check fixed coordinate matches AND along-wall position falls within wall range
+        return Math.abs(dwFixedCoord - wallFixedCoord) < 0.15 &&
+               dwAlongStart >= wallRangeStart - 0.1 && dwAlongStart <= wallRangeEnd + 0.1
+      }).map(dw => ({
+        start: dw.x * MM_TO_M,
+        end: (dw.x + dw.width) * MM_TO_M,
+        type: dw.type,
+      })).sort((a, b) => a.start - b.start)
+
+      if (gaps.length === 0) {
+        addWallBox(w.px, wallH / 2, w.pz, w.sx, wallH, w.sz, true)
+      } else {
+        // Split wall at all door/window positions
+        const rangeStart = isH ? w.px - w.sx / 2 : w.pz - w.sz / 2
+        const rangeEnd = isH ? w.px + w.sx / 2 : w.pz + w.sz / 2
+        let cursor = rangeStart
+
+        for (const gap of gaps) {
+          // Full-height wall before gap
+          if (gap.start > cursor + 0.01) {
+            const segLen = gap.start - cursor
+            if (isH) addWallBox(cursor + segLen / 2, wallH / 2, w.pz, segLen, wallH, wallT)
+            else addWallBox(w.px, wallH / 2, cursor + segLen / 2, wallT, wallH, segLen)
+          }
+
+          const gapLen = gap.end - gap.start
+
+          if (gap.type === 'door') {
+            // Door: opening from floor to DOOR_H, lintel above
+            const lintelH = wallH - DOOR_H
+            if (lintelH > 0.01) {
+              if (isH) addWallBox(gap.start + gapLen / 2, DOOR_H + lintelH / 2, w.pz, gapLen, lintelH, wallT)
+              else addWallBox(w.px, DOOR_H + lintelH / 2, gap.start + gapLen / 2, wallT, lintelH, gapLen)
+            }
+          } else {
+            // Window: wall below, glass panel, wall above
+            if (WIN_BOTTOM > 0.01) {
+              if (isH) addWallBox(gap.start + gapLen / 2, WIN_BOTTOM / 2, w.pz, gapLen, WIN_BOTTOM, wallT)
+              else addWallBox(w.px, WIN_BOTTOM / 2, gap.start + gapLen / 2, wallT, WIN_BOTTOM, gapLen)
+            }
+            const aboveH = wallH - (WIN_BOTTOM + WIN_H)
+            if (aboveH > 0.01) {
+              const aboveY = WIN_BOTTOM + WIN_H + aboveH / 2
+              if (isH) addWallBox(gap.start + gapLen / 2, aboveY, w.pz, gapLen, aboveH, wallT)
+              else addWallBox(w.px, aboveY, gap.start + gapLen / 2, wallT, aboveH, gapLen)
+            }
+            const glassGeo = new THREE.BoxGeometry(
+              isH ? gapLen : 0.01, WIN_H, isH ? 0.01 : gapLen
+            )
+            const glass = new THREE.Mesh(glassGeo, glassMat)
+            if (isH) glass.position.set(gap.start + gapLen / 2, WIN_BOTTOM + WIN_H / 2, w.pz)
+            else glass.position.set(w.px, WIN_BOTTOM + WIN_H / 2, gap.start + gapLen / 2)
+            scene.add(glass)
+          }
+
+          cursor = gap.end
+        }
+
+        // Wall segment after last gap
+        if (cursor < rangeEnd - 0.01) {
+          const segLen = rangeEnd - cursor
+          if (isH) addWallBox(cursor + segLen / 2, wallH / 2, w.pz, segLen, wallH, wallT)
+          else addWallBox(w.px, wallH / 2, cursor + segLen / 2, wallT, wallH, segLen)
+        }
+      }
+    })
+
+    // Furniture (skip doors/windows — they are handled via wall gaps)
     if (floorplan.furniture) {
       floorplan.furniture.forEach((f: any) => {
+        if (f.name === '门' || f.name === '窗') return
         const fx = f.x * MM_TO_M
         const fz = f.y * MM_TO_M
         const fw = f.width * MM_TO_M

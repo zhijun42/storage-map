@@ -140,6 +140,41 @@ page {
     }
   }
 
+  // ===== Sub-mode Bar =====
+  .sub-mode-bar {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 24px;
+    background: #fff;
+    border-bottom: 1px solid hsl(210, 12%, 92%);
+    flex-shrink: 0;
+
+    .sub-mode-btn {
+      padding: 8px 28px;
+      border-radius: 999px;
+      border: 1.5px solid hsl(210, 12%, 90%);
+      background: #fff;
+
+      &:active { opacity: 0.8; }
+
+      &.active {
+        background: hsl(217, 91%, 96%);
+        border-color: hsl(217, 91%, 75%);
+      }
+
+      .sub-mode-text {
+        font-size: 24px;
+        color: hsl(215, 10%, 50%);
+      }
+
+      &.active .sub-mode-text {
+        color: hsl(217, 91%, 40%);
+        font-weight: 600;
+      }
+    }
+  }
+
   // ===== Canvas =====
   .canvas-wrap {
     flex: 1;

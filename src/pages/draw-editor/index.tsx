@@ -38,6 +38,15 @@ const PHASE_LABELS: Record<Phase, string[]> = {
 type Facing = 'top' | 'bottom' | 'left' | 'right'
 const FACING_LABELS: Record<Facing, string> = { top: '上', bottom: '下', left: '左', right: '右' }
 
+interface WallInfo {
+  roomId: string
+  wallSide: 'top' | 'bottom' | 'left' | 'right'
+  wallCoord: number
+  startAlongWall: number
+  lengthAlongWall: number
+  isHorizontal: boolean
+}
+
 interface Rect {
   id: string
   x: number; y: number; w: number; h: number
@@ -46,6 +55,18 @@ interface Rect {
   phase: Phase
   cabinetId?: string
   facing?: Facing
+  wallInfo?: WallInfo
+}
+
+type FurnitureSubMode = 'furniture' | 'door' | 'window'
+
+interface WallSegment {
+  roomId: string
+  side: 'top' | 'bottom' | 'left' | 'right'
+  isHorizontal: boolean
+  fixedCoord: number
+  rangeStart: number
+  rangeEnd: number
 }
 
 interface DrawState {
@@ -58,6 +79,8 @@ interface DrawState {
   isDragging: boolean
   dragRect: Rect | null
   dragOffsetX: number; dragOffsetY: number
+  wallSnap: WallSegment | null
+  wallDrawStart: number | null
 }
 
 // ===== Component =====
@@ -79,6 +102,8 @@ export default function DrawEditor() {
   const [customInput, setCustomInput] = useState('')
   const [canvasH, setCanvasH] = useState(400)
   const [editingCabinetId, setEditingCabinetId] = useState<string | null>(null)
+  const [furnitureSubMode, setFurnitureSubMode] = useState<FurnitureSubMode>('furniture')
+  const furnitureSubModeRef = useRef<FurnitureSubMode>('furniture')
 
   // Refs for non-reactive access
   const drawStateRef = useRef<DrawState>({
@@ -86,6 +111,7 @@ export default function DrawEditor() {
     startX: 0, startY: 0, currX: 0, currY: 0,
     snappedX: null, snappedY: null, isError: false, hasMoved: false,
     isDragging: false, dragRect: null, dragOffsetX: 0, dragOffsetY: 0,
+    wallSnap: null, wallDrawStart: null,
   })
   const boundsRef = useRef<{ left: number; top: number } | null>(null)
   const ctxRef = useRef<any>(null)
@@ -245,6 +271,41 @@ export default function DrawEditor() {
     return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h
   }
 
+  // ===== Wall Detection for Door/Window =====
+  function getWallSegments(): WallSegment[] {
+    const roomRects = allRectsRef.current.filter(r => r.phase === 'room')
+    const segments: WallSegment[] = []
+    for (const room of roomRects) {
+      segments.push(
+        { roomId: room.id, side: 'top', isHorizontal: true, fixedCoord: room.y, rangeStart: room.x, rangeEnd: room.x + room.w },
+        { roomId: room.id, side: 'bottom', isHorizontal: true, fixedCoord: room.y + room.h, rangeStart: room.x, rangeEnd: room.x + room.w },
+        { roomId: room.id, side: 'left', isHorizontal: false, fixedCoord: room.x, rangeStart: room.y, rangeEnd: room.y + room.h },
+        { roomId: room.id, side: 'right', isHorizontal: false, fixedCoord: room.x + room.w, rangeStart: room.y, rangeEnd: room.y + room.h },
+      )
+    }
+    return segments
+  }
+
+  function findNearestWall(wx: number, wy: number, threshold: number): WallSegment | null {
+    const walls = getWallSegments()
+    let best: WallSegment | null = null
+    let bestDist = threshold
+    for (const wall of walls) {
+      if (wall.isHorizontal) {
+        const dist = Math.abs(wy - wall.fixedCoord)
+        if (dist < bestDist && wx >= wall.rangeStart - threshold && wx <= wall.rangeEnd + threshold) {
+          bestDist = dist; best = wall
+        }
+      } else {
+        const dist = Math.abs(wx - wall.fixedCoord)
+        if (dist < bestDist && wy >= wall.rangeStart - threshold && wy <= wall.rangeEnd + threshold) {
+          bestDist = dist; best = wall
+        }
+      }
+    }
+    return best
+  }
+
   // ===== Snap =====
   function getSnapPools() {
     const xP = new Set<number>(); const yP = new Set<number>()
@@ -296,8 +357,61 @@ export default function DrawEditor() {
       if (!isSel) {
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(x, y, w, h)
+        // Draw walls with door/window gaps
         ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = sw(2.5)
-        ctx.strokeRect(x, y, w, h)
+        const allDwRects = allRectsRef.current.filter(r => r.phase === 'furniture' && r.wallInfo)
+        const wallDefs = [
+          { side: 'top', x1: x, y1: y, x2: x + w, y2: y, isH: true },
+          { side: 'bottom', x1: x, y1: y + h, x2: x + w, y2: y + h, isH: true },
+          { side: 'left', x1: x, y1: y, x2: x, y2: y + h, isH: false },
+          { side: 'right', x1: x + w, y1: y, x2: x + w, y2: y + h, isH: false },
+        ]
+        for (const wd of wallDefs) {
+          const wallCoord = wd.isH ? wd.y1 : wd.x1
+          const rStart = wd.isH ? x : y
+          const rEnd = wd.isH ? x + w : y + h
+          const gaps = allDwRects
+            .filter(r => {
+              const wi = r.wallInfo!
+              return wi.isHorizontal === wd.isH && Math.abs(wi.wallCoord - wallCoord) < 1 &&
+                wi.startAlongWall + wi.lengthAlongWall > rStart && wi.startAlongWall < rEnd
+            })
+            .map(r => ({
+              start: Math.max(r.wallInfo!.startAlongWall, rStart),
+              end: Math.min(r.wallInfo!.startAlongWall + r.wallInfo!.lengthAlongWall, rEnd),
+              label: r.labels[0]
+            }))
+            .sort((a, b) => a.start - b.start)
+
+          if (gaps.length === 0) {
+            ctx.beginPath(); ctx.moveTo(wd.x1, wd.y1); ctx.lineTo(wd.x2, wd.y2); ctx.stroke()
+          } else {
+            let cursor = rStart
+            for (const gap of gaps) {
+              if (gap.start > cursor) {
+                ctx.beginPath()
+                if (wd.isH) { ctx.moveTo(cursor, wd.y1); ctx.lineTo(gap.start, wd.y1) }
+                else { ctx.moveTo(wd.x1, cursor); ctx.lineTo(wd.x1, gap.start) }
+                ctx.stroke()
+              }
+              // Window: draw thin blue glass line
+              if (gap.label === '窗') {
+                ctx.save(); ctx.strokeStyle = 'hsl(217, 91%, 60%)'; ctx.lineWidth = sw(3); ctx.globalAlpha = 0.5
+                ctx.beginPath()
+                if (wd.isH) { ctx.moveTo(gap.start, wd.y1); ctx.lineTo(gap.end, wd.y1) }
+                else { ctx.moveTo(wd.x1, gap.start); ctx.lineTo(wd.x1, gap.end) }
+                ctx.stroke(); ctx.restore(); ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = sw(2.5)
+              }
+              cursor = gap.end
+            }
+            if (cursor < rEnd) {
+              ctx.beginPath()
+              if (wd.isH) { ctx.moveTo(cursor, wd.y1); ctx.lineTo(rEnd, wd.y1) }
+              else { ctx.moveTo(wd.x1, cursor); ctx.lineTo(wd.x1, rEnd) }
+              ctx.stroke()
+            }
+          }
+        }
       }
       if (rect.labels.length > 0) {
         ctx.fillStyle = '#8e99a4'
@@ -306,6 +420,7 @@ export default function DrawEditor() {
         ctx.fillText(rect.labels[0], x + w / 2, y + h / 2)
       }
     } else if (rectPhase === 'furniture') {
+      if (rect.wallInfo) return // wall-attached items rendered as wall gaps
       if (!isSel) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
         ctx.fillRect(x, y, w, h)
@@ -464,13 +579,43 @@ export default function DrawEditor() {
 
     // Preview rect (world space) — not during drag mode
     const ds = drawStateRef.current
-    if (ds.isDrawing && ds.hasMoved && !ds.isDragging) {
+    if (ds.isDrawing && ds.hasMoved && !ds.isDragging && ds.wallSnap && ds.wallDrawStart != null) {
+      // Wall-constrained preview for door/window
+      const wall = ds.wallSnap
+      const along = wall.isHorizontal ? ds.currX : ds.currY
+      const cStart = Math.max(wall.rangeStart, Math.min(wall.rangeEnd, ds.wallDrawStart))
+      const cEnd = Math.max(wall.rangeStart, Math.min(wall.rangeEnd, along))
+      const isDoor = furnitureSubModeRef.current === 'door'
+      const swf = (px: number) => px / v.scale
+      ctx.strokeStyle = isDoor ? '#D97706' : '#3B82F6'
+      ctx.lineWidth = swf(isDoor ? 4 : 5)
+      ctx.beginPath()
+      if (wall.isHorizontal) {
+        ctx.moveTo(Math.min(cStart, cEnd), wall.fixedCoord)
+        ctx.lineTo(Math.max(cStart, cEnd), wall.fixedCoord)
+      } else {
+        ctx.moveTo(wall.fixedCoord, Math.min(cStart, cEnd))
+        ctx.lineTo(wall.fixedCoord, Math.max(cStart, cEnd))
+      }
+      ctx.stroke()
+      // Dimension label
+      const len = Math.abs(cEnd - cStart)
+      const pmm = FLOOR_PX_TO_MM
+      ctx.fillStyle = isDoor ? '#D97706' : '#2563EB'
+      ctx.font = `500 ${Math.round(swf(10))}px -apple-system, sans-serif`
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
+      if (wall.isHorizontal) {
+        ctx.fillText(`${Math.round(len * pmm)}mm`, (Math.min(cStart, cEnd) + Math.max(cStart, cEnd)) / 2, wall.fixedCoord - swf(4))
+      } else {
+        ctx.fillText(`${Math.round(len * pmm)}mm`, wall.fixedCoord + swf(12), (Math.min(cStart, cEnd) + Math.max(cStart, cEnd)) / 2)
+      }
+    } else if (ds.isDrawing && ds.hasMoved && !ds.isDragging && !ds.wallSnap) {
       const ax = ds.snappedX ?? ds.currX; const ay = ds.snappedY ?? ds.currY
       const pv = stdRect(ds.startX, ds.startY, ax, ay)
-      const sw = (px: number) => px / v.scale
+      const swf = (px: number) => px / v.scale
       ctx.fillStyle = ds.isError ? 'rgba(239,68,68,0.3)' : 'rgba(59,130,246,0.2)'
       ctx.strokeStyle = ds.isError ? '#EF4444' : '#3B82F6'
-      ctx.lineWidth = sw(2)
+      ctx.lineWidth = swf(2)
       ctx.fillRect(pv.x, pv.y, pv.w, pv.h)
       ctx.strokeRect(pv.x, pv.y, pv.w, pv.h)
       drawDim(ctx, pv.x, pv.y, pv.w, pv.h, ds.isError ? '#EF4444' : '#2563EB')
@@ -519,9 +664,25 @@ export default function DrawEditor() {
     const rawX = t.clientX - bnd.left; const rawY = t.clientY - bnd.top
     const wc = screenToWorld(rawX, rawY)
 
+    // Door/Window mode: snap to wall — only proceed if a wall is found
+    if (phaseRef.current === 'furniture' && furnitureSubModeRef.current !== 'furniture') {
+      const wallThreshold = 20 / viewRef.current.scale
+      const wall = findNearestWall(wc.x, wc.y, wallThreshold)
+      if (!wall) return
+      const alongPos = wall.isHorizontal ? wc.x : wc.y
+      drawStateRef.current = {
+        isDrawing: true, rawStartX: rawX, rawStartY: rawY,
+        startX: wc.x, startY: wc.y, currX: wc.x, currY: wc.y,
+        snappedX: null, snappedY: null, isError: false, hasMoved: false,
+        isDragging: false, dragRect: null, dragOffsetX: 0, dragOffsetY: 0,
+        wallSnap: wall, wallDrawStart: alongPos,
+      }
+      return
+    }
+
     // Check if touching an existing rect → prepare for potential drag
     const active = getActiveRects()
-    const hitRect = [...active].reverse().find(r => ptInRect(wc.x, wc.y, r))
+    const hitRect = [...active].reverse().find(r => ptInRect(wc.x, wc.y, r) && !r.wallInfo)
 
     const snapDist = SNAP_DISTANCE / viewRef.current.scale
     const { xPool, yPool } = getSnapPools()
@@ -536,6 +697,7 @@ export default function DrawEditor() {
       dragRect: hitRect ? { ...hitRect } : null,
       dragOffsetX: hitRect ? wc.x - hitRect.x : 0,
       dragOffsetY: hitRect ? wc.y - hitRect.y : 0,
+      wallSnap: null, wallDrawStart: null,
     }
   }
 
@@ -590,6 +752,16 @@ export default function DrawEditor() {
 
     const wc = screenToWorld(rawX, rawY)
     const snapDist = SNAP_DISTANCE / viewRef.current.scale
+
+    // Wall-constrained drawing for door/window
+    if (ds.wallSnap && ds.wallDrawStart != null) {
+      const wall = ds.wallSnap
+      const along = wall.isHorizontal ? wc.x : wc.y
+      const clamped = Math.max(wall.rangeStart, Math.min(wall.rangeEnd, along))
+      drawStateRef.current = { ...ds, currX: wc.x, currY: wc.y, hasMoved: true, wallSnap: wall, wallDrawStart: ds.wallDrawStart }
+      renderCanvas()
+      return
+    }
 
     if (ds.isDragging && ds.dragRect) {
       // Drag mode: move the rect
@@ -674,6 +846,47 @@ export default function DrawEditor() {
     const ds = drawStateRef.current
     if (!ds.isDrawing) return
 
+    // Finalize door/window on wall
+    if (ds.wallSnap && ds.hasMoved && ds.wallDrawStart != null) {
+      const wall = ds.wallSnap
+      const along = wall.isHorizontal ? screenToWorld(0, 0).x + (screenToWorld(ds.rawStartX + (e.changedTouches?.[0]?.clientX - boundsRef.current!.left) - ds.rawStartX, 0).x - screenToWorld(0, 0).x) : 0
+      const endWc = screenToWorld(
+        (e.changedTouches?.[0]?.clientX || 0) - boundsRef.current!.left,
+        (e.changedTouches?.[0]?.clientY || 0) - boundsRef.current!.top,
+      )
+      const endAlong = wall.isHorizontal ? endWc.x : endWc.y
+      const clampedEnd = Math.max(wall.rangeStart, Math.min(wall.rangeEnd, endAlong))
+      const clampedStart = Math.max(wall.rangeStart, Math.min(wall.rangeEnd, ds.wallDrawStart))
+
+      const startPos = Math.min(clampedStart, clampedEnd)
+      const endPos = Math.max(clampedStart, clampedEnd)
+      const len = endPos - startPos
+      const minLen = MIN_SIZE / viewRef.current.scale
+
+      if (len >= minLen) {
+        const WALL_T = 4 / viewRef.current.scale
+        const isDoor = furnitureSubModeRef.current === 'door'
+        const id = `rect_${Date.now()}`
+        const wallInfoData: WallInfo = {
+          roomId: wall.roomId, wallSide: wall.side,
+          wallCoord: wall.fixedCoord,
+          startAlongWall: startPos, lengthAlongWall: len,
+          isHorizontal: wall.isHorizontal,
+        }
+        const newRect: Rect = wall.isHorizontal
+          ? { id, x: startPos, y: wall.fixedCoord - WALL_T / 2, w: len, h: WALL_T, labels: [isDoor ? '门' : '窗'], slotType: 'open', phase: 'furniture', wallInfo: wallInfoData }
+          : { id, x: wall.fixedCoord - WALL_T / 2, y: startPos, w: WALL_T, h: len, labels: [isDoor ? '门' : '窗'], slotType: 'open', phase: 'furniture', wallInfo: wallInfoData }
+
+        const newAll = [...allRectsRef.current, newRect]
+        allRectsRef.current = newAll
+        setAllRects(newAll)
+        pushHistory(newAll)
+      }
+      drawStateRef.current = { ...ds, isDrawing: false, hasMoved: false, wallSnap: null, wallDrawStart: null }
+      renderCanvas()
+      return
+    }
+
     if (ds.isDragging && ds.dragRect) {
       // End drag — position already updated during move
       if (!ds.isError) {
@@ -691,7 +904,15 @@ export default function DrawEditor() {
       // Tap → select/deselect in world space
       const wc = screenToWorld(ds.rawStartX, ds.rawStartY)
       const active = getActiveRects()
-      const hit = [...active].reverse().find(r => ptInRect(wc.x, wc.y, r))
+      const hitPad = 8 / viewRef.current.scale
+      const hit = [...active].reverse().find(r => {
+        if (r.wallInfo) {
+          // Expanded hit area for thin door/window rects
+          return wc.x >= r.x - hitPad && wc.x <= r.x + r.w + hitPad &&
+                 wc.y >= r.y - hitPad && wc.y <= r.y + r.h + hitPad
+        }
+        return ptInRect(wc.x, wc.y, r)
+      })
       selectedIdRef.current = hit ? hit.id : null
       setSelectedRectId(hit ? hit.id : null)
     } else {
@@ -1068,7 +1289,7 @@ export default function DrawEditor() {
     const pmm = FLOOR_PX_TO_MM
     const emm = ELEV_PX_TO_MM
     const rooms = allRects.filter(r => r.phase === 'room')
-    const furniture = allRects.filter(r => r.phase === 'furniture')
+    const furniture = allRects.filter(r => r.phase === 'furniture' && !r.wallInfo)
     const cabinets = allRects.filter(r => r.phase === 'cabinet')
 
     return {
@@ -1084,7 +1305,11 @@ export default function DrawEditor() {
             { x1: x + w, y1: y + h, x2: x, y2: y + h },
             { x1: x, y1: y + h, x2: x, y2: y },
           ],
-          doors: [], windows: [], offset: { x: 0, y: 0 },
+          doors: allRects.filter(dr => dr.phase === 'furniture' && dr.wallInfo?.roomId === r.id && dr.labels[0] === '门')
+            .map(dr => ({ x: Math.round(dr.wallInfo!.startAlongWall * pmm), y: Math.round(dr.wallInfo!.wallCoord * pmm), width: Math.round(dr.wallInfo!.lengthAlongWall * pmm), direction: dr.wallInfo!.wallSide })),
+          windows: allRects.filter(wr => wr.phase === 'furniture' && wr.wallInfo?.roomId === r.id && wr.labels[0] === '窗')
+            .map(wr => ({ x: Math.round(wr.wallInfo!.startAlongWall * pmm), y: Math.round(wr.wallInfo!.wallCoord * pmm), width: Math.round(wr.wallInfo!.lengthAlongWall * pmm) })),
+          offset: { x: 0, y: 0 },
         }
       }),
       furniture: furniture.map((r, i) => ({
@@ -1212,8 +1437,29 @@ export default function DrawEditor() {
 
       {/* Hint */}
       <View className='hint-bar'>
-        <Text className='hint-text'>{PHASE_META[phase].hint}</Text>
+        <Text className='hint-text'>
+          {phase === 'furniture' && furnitureSubMode === 'door' ? '沿墙壁拖拽放置门'
+            : phase === 'furniture' && furnitureSubMode === 'window' ? '沿墙壁拖拽放置窗户'
+            : PHASE_META[phase].hint}
+        </Text>
       </View>
+
+      {/* Sub-mode toggle for furniture phase */}
+      {phase === 'furniture' && (
+        <View className='sub-mode-bar'>
+          {(['furniture', 'door', 'window'] as FurnitureSubMode[]).map(mode => (
+            <View
+              key={mode}
+              className={`sub-mode-btn ${furnitureSubMode === mode ? 'active' : ''}`}
+              onClick={() => { setFurnitureSubMode(mode); furnitureSubModeRef.current = mode }}
+            >
+              <Text className='sub-mode-text'>
+                {mode === 'furniture' ? '家具' : mode === 'door' ? '门' : '窗'}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Canvas */}
       <View className='canvas-wrap'>
@@ -1263,8 +1509,25 @@ export default function DrawEditor() {
         </View>
       )}
 
-      {/* Property panel */}
-      {selectedRect && (
+      {/* Property panel — minimal for door/window, full for others */}
+      {selectedRect && selectedRect.wallInfo && (
+        <View className='panel-mask' onClick={() => setSelectedRectId(null)}>
+          <View className='property-panel' onClick={(e) => e.stopPropagation()}>
+            <View className='panel-header'>
+              <Text className='panel-title'>{selectedRect.labels[0] === '门' ? '门' : '窗'}</Text>
+              <View className='panel-close' onClick={() => setSelectedRectId(null)}>
+                <Text className='close-icon'>x</Text>
+              </View>
+            </View>
+            <View className='panel-footer'>
+              <View className='del-btn' onClick={deleteSelected}>
+                <Text className='del-text'>删除</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
+      {selectedRect && !selectedRect.wallInfo && (
         <View className='panel-mask' onClick={() => setSelectedRectId(null)}>
           <View className='property-panel' onClick={(e) => e.stopPropagation()}>
             <View className='panel-header'>
