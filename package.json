@@ -12,7 +12,9 @@
     "build:weapp": "taro build --type weapp",
     "build:h5": "taro build --type h5",
     "dev:weapp": "npm run build:weapp -- --watch",
-    "dev:h5": "npm run build:h5 -- --watch"
+    "dev:h5": "npm run build:h5 -- --watch",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "browserslist": [
     "last 3 versions",
@@ -39,9 +41,12 @@
     "@babel/runtime": "^7.24.0",
     "@tarojs/cli": "4.1.11",
     "@tarojs/webpack5-runner": "4.1.11",
+    "@types/jest": "^30.0.0",
     "@types/react": "^18.3.0",
     "babel-preset-taro": "^4.1.11",
+    "jest": "^30.3.0",
     "sass": "^1.77.0",
+    "ts-jest": "^29.4.9",
     "typescript": "^5.4.0",
     "webpack": "^5.90.0"
   }

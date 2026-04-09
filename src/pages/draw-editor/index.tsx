@@ -541,11 +541,108 @@ export default function DrawEditor() {
     allRectsRef.current = newAll; setAllRects(newAll)
   }
 
-  function deleteSelected() {
+  // Count items in a cabinet by draw rect ID → space service container ID mapping
+  async function countCabinetItems(rectId: string): Promise<number> {
+    try {
+      const map = JSON.parse(Taro.getStorageSync('rect_container_map') || '{}')
+      const mapping = map[rectId]
+      if (!mapping) return 0
+
+      const space = await getSpace(mapping.spaceId)
+      if (!space?.rooms) return 0
+      for (const room of space.rooms) {
+        for (const c of (room.containers || [])) {
+          if (c._id !== mapping.containerId) continue
+          let count = 0
+          for (const slot of (c.slots || [])) {
+            if (Array.isArray(slot.items)) count += slot.items.length
+            else if (typeof slot.items === 'string' && slot.items.trim()) count += slot.items.split('、').length
+          }
+          return count
+        }
+      }
+    } catch {}
+    return 0
+  }
+
+  async function deleteSelected() {
     if (!selectedRectId) return
-    const newAll = allRectsRef.current.filter(r => r.id !== selectedRectId)
-    allRectsRef.current = newAll; selectedIdRef.current = null
-    setAllRects(newAll); setSelectedRectId(null)
+    const rect = allRectsRef.current.find(r => r.id === selectedRectId)
+    if (!rect) return
+
+    // Helper: perform cascade delete
+    function doCascadeDelete(extraIds: string[]) {
+      const deleteIds = new Set([rect.id, ...extraIds])
+      const newAll = allRectsRef.current.filter(r => !deleteIds.has(r.id))
+      allRectsRef.current = newAll; selectedIdRef.current = null
+      setAllRects(newAll); setSelectedRectId(null)
+    }
+
+    if (rect.phase === 'room') {
+      const contained = allRectsRef.current.filter(r => {
+        if (r.phase !== 'furniture' && r.phase !== 'cabinet') return false
+        const cx = r.x + r.w / 2; const cy = r.y + r.h / 2
+        return cx >= rect.x && cx <= rect.x + rect.w && cy >= rect.y && cy <= rect.y + rect.h
+      })
+      const containedCabs = contained.filter(r => r.phase === 'cabinet')
+
+      // Check if any contained cabinet has real items (by ID mapping)
+      for (const cab of containedCabs) {
+        const itemCount = await countCabinetItems(cab.id)
+        if (itemCount > 0) {
+          Taro.showModal({
+            title: '无法删除',
+            content: `「${cab.labels[0] || '储物柜'}」内还有 ${itemCount} 件物品，请先将物品迁移到其他储物柜后再删除该房间。`,
+            showCancel: false,
+          })
+          return
+        }
+      }
+
+      if (contained.length > 0) {
+        const elevIds: string[] = []
+        const cabIds = containedCabs.map(r => r.id)
+        allRectsRef.current.forEach(r => {
+          if (r.phase === 'elevation' && cabIds.includes(r.cabinetId || '')) elevIds.push(r.id)
+        })
+        Taro.showModal({
+          title: '删除房间',
+          content: `该房间内有 ${contained.length} 个家具/储物柜，将一并删除。确定删除？`,
+          success: (res) => {
+            if (res.confirm) doCascadeDelete([...contained.map(r => r.id), ...elevIds])
+          },
+        })
+        return
+      }
+    }
+
+    if (rect.phase === 'cabinet') {
+      // Check if cabinet has real items (by ID mapping)
+      const itemCount = await countCabinetItems(rect.id)
+      if (itemCount > 0) {
+        Taro.showModal({
+          title: '无法删除',
+          content: `「${rect.labels[0] || '储物柜'}」内还有 ${itemCount} 件物品，请先将物品迁移到其他储物柜后再删除。`,
+          showCancel: false,
+        })
+        return
+      }
+
+      const elevIds = allRectsRef.current
+        .filter(r => r.phase === 'elevation' && r.cabinetId === rect.id)
+        .map(r => r.id)
+      if (elevIds.length > 0) {
+        Taro.showModal({
+          title: '删除储物柜',
+          content: `该储物柜有 ${elevIds.length} 个隔间，确定删除？`,
+          success: (res) => { if (res.confirm) doCascadeDelete(elevIds) },
+        })
+        return
+      }
+    }
+
+    // Simple delete (furniture, empty cabinet, elevation rect)
+    doCascadeDelete([])
   }
 
   function clearPhase() {
@@ -678,7 +775,7 @@ export default function DrawEditor() {
           }))
         }
 
-        await addContainer(space._id, serviceRoomId, {
+        const created = await addContainer(space._id, serviceRoomId, {
           name: c.name,
           type: 'custom',
           movable: false,
@@ -687,6 +784,12 @@ export default function DrawEditor() {
           x: c.x, y: c.y, width: c.width, height: c.height,
           slots: slots.length > 0 ? slots : [{ label: '第1层', type: 'shelf', items: '', photo: '' }],
         })
+        // Store mapping: draw rect ID → service IDs
+        if (created) {
+          const map = JSON.parse(Taro.getStorageSync('rect_container_map') || '{}')
+          map[c.id] = { containerId: created._id, spaceId: space._id, roomId: serviceRoomId }
+          Taro.setStorageSync('rect_container_map', JSON.stringify(map))
+        }
       }
 
       Taro.hideLoading()
