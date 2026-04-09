@@ -9,7 +9,8 @@ const db = cloud.database()
 
 exports.main = async (event) => {
   const { action, spaceId, shareToken } = event
-  const openId = event.userInfo?.openId || ''
+  const wxContext = cloud.getWXContext()
+  const openId = wxContext.OPENID || ''
 
   if (action === 'create') {
     const token = generateToken()

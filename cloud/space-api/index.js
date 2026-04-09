@@ -241,7 +241,8 @@ async function handleDeleteContainer(openId, { spaceId, roomId, containerId }) {
 // ===== Entry point =====
 
 exports.main = async (event) => {
-  const openId = event.userInfo?.openId || ''
+  const wxContext = cloud.getWXContext()
+  const openId = wxContext.OPENID || ''
   if (!openId) return { success: false, error: '未登录' }
 
   const { action } = event
