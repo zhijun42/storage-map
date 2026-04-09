@@ -17,7 +17,7 @@ export default function ContainerPage() {
   const decodedQuery = searchQuery ? decodeURIComponent(searchQuery) : ''
 
   useEffect(() => { loadContainer() }, [])
-  useDidShow(() => { loadContainer() })
+  useDidShow(() => { loadContainer(); setExpandedItem(null); setEditValues({}) })
 
   async function loadContainer() {
     const space = await getSpace(spaceId)
@@ -182,10 +182,12 @@ export default function ContainerPage() {
         {container.slots?.map((slot: any, slotIndex: number) => {
           if (selectedSlot !== null && selectedSlot !== slotIndex) return null
           const items = normalizeItems(slot.items)
+          const slotCats = [...new Set(items.map(i => i.category).filter(Boolean))]
+          const slotDisplayName = slotCats.length > 0 ? slotCats.join('、') : items.length === 0 ? '暂无物品' : slot.label
           return (
             <View key={slotIndex} className='slot-card'>
               <View className='slot-header'>
-                <Text className='slot-label'>{slot.label}</Text>
+                <Text className='slot-label'>{slotDisplayName}</Text>
                 <Text className='action-btn delete' onClick={() => handleDeleteSlot(slotIndex)}>删除层</Text>
               </View>
 
@@ -242,6 +244,11 @@ export default function ContainerPage() {
                           </View>
                         )}
                         <View className='edit-actions'>
+                          <Text className='edit-move-btn' onClick={() => {
+                            Taro.navigateTo({
+                              url: `/pages/move-item/index?spaceId=${spaceId}&roomId=${roomId}&containerId=${containerId}&slotIndex=${slotIndex}&itemIndex=${itemIndex}`,
+                            })
+                          }}>移动到...</Text>
                           <Text className='edit-delete-btn' onClick={() => handleDeleteItem(slotIndex, itemIndex)}>删除物品</Text>
                         </View>
                       </View>

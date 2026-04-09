@@ -206,6 +206,13 @@
         margin-top: 8px;
         display: flex;
         justify-content: center;
+        gap: 32px;
+      }
+
+      .edit-move-btn {
+        font-size: 26px;
+        color: hsl(217, 91%, 60%);
+        padding: 12px 32px;
       }
 
       .edit-delete-btn {

@@ -8,7 +8,7 @@
 
 import Taro from '@tarojs/taro'
 import * as cloudService from './cloud'
-import { normalizeItems } from './items'
+import { normalizeItems, serializeItems } from './items'
 
 function useCloud(): boolean {
   return process.env.TARO_ENV === 'weapp' && !!Taro.cloud
@@ -219,6 +219,51 @@ export async function searchItems(query: string) {
   })
 
   return results
+}
+
+// ===== Move Item =====
+
+export async function moveItem(
+  spaceId: string,
+  fromRoomId: string, fromContainerId: string, fromSlotIndex: number, itemIndex: number,
+  toRoomId: string, toContainerId: string, toSlotIndex: number,
+) {
+  const data = getData()
+  const space = data.spaces.find((s: any) => s._id === spaceId)
+  if (!space) return false
+
+  const fromRoom = space.rooms.find((r: any) => r._id === fromRoomId)
+  const toRoom = space.rooms.find((r: any) => r._id === toRoomId)
+  if (!fromRoom || !toRoom) return false
+
+  const fromContainer = fromRoom.containers.find((c: any) => c._id === fromContainerId)
+  const toContainer = toRoom.containers.find((c: any) => c._id === toContainerId)
+  if (!fromContainer || !toContainer) return false
+
+  const fromSlot = fromContainer.slots?.[fromSlotIndex]
+  const toSlot = toContainer.slots?.[toSlotIndex]
+  if (!fromSlot || !toSlot) return false
+
+  const fromItems = normalizeItems(fromSlot.items)
+  if (itemIndex < 0 || itemIndex >= fromItems.length) return false
+
+  const [movedItem] = fromItems.splice(itemIndex, 1)
+  fromSlot.items = serializeItems(fromItems)
+
+  const toItems = normalizeItems(toSlot.items)
+  toItems.push(movedItem)
+  toSlot.items = serializeItems(toItems)
+
+  saveData(data)
+
+  syncToCloud('moveItem:updateFrom', () =>
+    cloudService.cloudUpdateContainer(spaceId, fromRoomId, fromContainerId, { slots: fromContainer.slots }))
+  if (fromContainerId !== toContainerId) {
+    syncToCloud('moveItem:updateTo', () =>
+      cloudService.cloudUpdateContainer(spaceId, toRoomId, toContainerId, { slots: toContainer.slots }))
+  }
+
+  return true
 }
 
 // ===== Photo =====

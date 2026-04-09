@@ -30,12 +30,11 @@ function hasFlexibleLayout(slots: Slot[]): boolean {
 }
 
 function getSlotCategories(slot: Slot): string {
-  // Merge categories from slot.categories and from items
-  const slotCats = slot.categories || []
-  const itemCats = [...new Set(normalizeItems(slot.items).map(i => i.category).filter(Boolean))]
-  const allCats = [...new Set([...slotCats, ...itemCats])]
-  if (allCats.length === 0) return ''
-  return allCats.length <= 2 ? allCats.join('，') : `${allCats[0]}等`
+  const items = normalizeItems(slot.items)
+  if (items.length === 0) return '暂无物品'
+  const cats = [...new Set(items.map(i => i.category).filter(Boolean))]
+  if (cats.length === 0) return ''
+  return cats.length <= 2 ? cats.join('，') : `${cats[0]}等`
 }
 
 export default function IsometricView({

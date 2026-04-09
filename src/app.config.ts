@@ -12,6 +12,7 @@ export default defineAppConfig({
     'pages/capture/index',
     'pages/add-item/index',
     'pages/item-detail/index',
+    'pages/move-item/index',
   ],
   tabBar: {
     color: '#69727d',

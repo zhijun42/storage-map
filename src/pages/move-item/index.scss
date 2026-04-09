@@ -1,0 +1,64 @@
+.move-item-page {
+  padding: 24px 32px;
+  padding-bottom: 60px;
+
+  .move-header {
+    margin-bottom: 24px;
+
+    .move-title {
+      font-size: 36px;
+      font-weight: 700;
+      color: hsl(220, 25%, 10%);
+      display: block;
+    }
+
+    .move-subtitle {
+      font-size: 26px;
+      color: hsl(215, 10%, 46%);
+      display: block;
+      margin-top: 8px;
+    }
+  }
+
+  .floorplan-section {
+    margin-bottom: 24px;
+    background: #fff;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+
+  .slot-picker {
+    .slot-picker-title {
+      font-size: 30px;
+      font-weight: 600;
+      color: hsl(220, 25%, 10%);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .slot-picker-hint {
+      font-size: 24px;
+      color: hsl(215, 10%, 46%);
+      display: block;
+      margin-bottom: 16px;
+    }
+
+    .isometric-section {
+      background: #fff;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  .hint-section {
+    text-align: center;
+    padding: 48px 0;
+
+    .hint-text {
+      font-size: 28px;
+      color: hsl(215, 10%, 60%);
+    }
+  }
+}
