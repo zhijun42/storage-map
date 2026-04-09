@@ -2,6 +2,49 @@
   padding: 24px 32px;
   padding-bottom: 60px;
 
+  .photo-section {
+    margin-bottom: 32px;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+
+    .photo-preview {
+      width: 100%;
+      height: 360px;
+      display: block;
+      border-radius: 16px;
+    }
+
+    .photo-placeholder {
+      width: 100%;
+      height: 280px;
+      background: hsl(210, 12%, 96%);
+      border: 2px dashed hsl(210, 12%, 80%);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+
+      &:active { background: hsl(210, 12%, 93%); }
+
+      .photo-icon { font-size: 56px; }
+      .photo-hint { font-size: 26px; color: hsl(215, 10%, 46%); }
+    }
+
+    .photo-change {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      font-size: 24px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 8px 20px;
+      border-radius: 999px;
+    }
+  }
+
   .form {
     display: flex;
     flex-direction: column;

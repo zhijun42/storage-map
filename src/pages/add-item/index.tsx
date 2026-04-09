@@ -1,7 +1,7 @@
-import { View, Text, Input, Picker } from '@tarojs/components'
+import { View, Text, Input, Picker, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState } from 'react'
-import { getSpace, updateContainer } from '../../services/space'
+import { getSpace, updateContainer, uploadPhoto } from '../../services/space'
 import { normalizeItems, serializeItems, CATEGORIES } from '../../services/items'
 import './index.scss'
 
@@ -14,9 +14,24 @@ export default function AddItemPage() {
   const [categoryIndex, setCategoryIndex] = useState(-1)
   const [price, setPrice] = useState('')
   const [notes, setNotes] = useState('')
+  const [photoPath, setPhotoPath] = useState('')
   const [saving, setSaving] = useState(false)
 
   const today = new Date().toISOString().slice(0, 10)
+
+  async function handleChoosePhoto() {
+    try {
+      const res = await Taro.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['camera', 'album'],
+        sizeType: ['compressed'],
+      })
+      if (res.tempFiles?.length > 0) {
+        setPhotoPath(res.tempFiles[0].tempFilePath)
+      }
+    } catch {}
+  }
 
   async function handleSave() {
     if (!name.trim()) {
@@ -36,6 +51,17 @@ export default function AddItemPage() {
     const container = room.containers?.find((c: any) => c._id === containerId)
     if (!container) { setSaving(false); return }
 
+    let photoUrl = ''
+    if (photoPath) {
+      try {
+        Taro.showLoading({ title: '上传照片...' })
+        photoUrl = await uploadPhoto(photoPath, containerId, slotIndex)
+        Taro.hideLoading()
+      } catch {
+        Taro.hideLoading()
+      }
+    }
+
     const updatedSlots = [...container.slots]
     const items = normalizeItems(updatedSlots[slotIndex].items)
     items.push({
@@ -43,7 +69,7 @@ export default function AddItemPage() {
       category: CATEGORIES[categoryIndex],
       price: price.trim() || '',
       createdAt: today,
-      photo: '',
+      photo: photoUrl,
       notes: notes.trim(),
     })
     updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(items) }
@@ -56,6 +82,19 @@ export default function AddItemPage() {
 
   return (
     <View className='add-item-page'>
+      {/* Photo */}
+      <View className='photo-section' onClick={handleChoosePhoto}>
+        {photoPath ? (
+          <Image className='photo-preview' src={photoPath} mode='aspectFill' />
+        ) : (
+          <View className='photo-placeholder'>
+            <Text className='photo-icon'>📷</Text>
+            <Text className='photo-hint'>拍照 / 从相册选择</Text>
+          </View>
+        )}
+        {photoPath && <Text className='photo-change'>重新选择</Text>}
+      </View>
+
       <View className='form'>
         {/* Name — required */}
         <View className='field'>
