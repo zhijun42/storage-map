@@ -69,13 +69,15 @@ export async function pullFromCloudIfEmpty() {
     }
 
     // Pull floorplan visual data
-    const fp = await cloudService.cloudLoadFloorplan()
-    if (fp) {
-      if (fp.floorplan) Taro.setStorageSync('drawn_floorplan', fp.floorplan)
-      if (fp.rects) Taro.setStorageSync('draw_all_rects', fp.rects)
-      if (fp.rectMap) Taro.setStorageSync('rect_container_map', fp.rectMap)
-      console.log('[Sync] Pulled floorplan data from cloud')
-    }
+    try {
+      const fp = await cloudService.cloudLoadFloorplan()
+      if (fp) {
+        if (fp.floorplan) Taro.setStorageSync('drawn_floorplan', fp.floorplan)
+        if (fp.rects) Taro.setStorageSync('draw_all_rects', fp.rects)
+        if (fp.rectMap) Taro.setStorageSync('rect_container_map', fp.rectMap)
+        console.log('[Sync] Pulled floorplan data from cloud')
+      }
+    } catch {}
   } catch (err: any) {
     console.warn('[Sync] Pull failed:', err.message || err)
   }

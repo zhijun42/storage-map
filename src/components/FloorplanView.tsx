@@ -20,6 +20,7 @@ interface Room {
 interface FloorplanViewProps {
   rooms: Room[]
   compact?: boolean
+  spaceId?: string
   highlightContainerId?: string | null
   onContainerClick?: (roomId: string, containerId: string) => void
 }
@@ -43,9 +44,10 @@ interface HitArea {
 }
 
 // Load drawn floorplan from localStorage, fall back to static JSON
-function getFloorplanData(): any {
+function getFloorplanData(spaceId?: string): any {
   try {
-    const saved = Taro.getStorageSync('drawn_floorplan')
+    const key = spaceId ? `drawn_floorplan_${spaceId}` : 'drawn_floorplan'
+    const saved = Taro.getStorageSync(key)
     if (saved) {
       const parsed = JSON.parse(saved)
       if (parsed?.rooms?.length > 0) return parsed
@@ -54,7 +56,7 @@ function getFloorplanData(): any {
   return staticFloorplan
 }
 
-export default function FloorplanView({ rooms, compact, highlightContainerId, onContainerClick }: FloorplanViewProps) {
+export default function FloorplanView({ rooms, compact, spaceId, highlightContainerId, onContainerClick }: FloorplanViewProps) {
   const hitAreasRef = useRef<HitArea[]>([])
   const canvasId = compact ? 'fp-compact' : 'fp-full'
   const [canvasHeight, setCanvasHeight] = useState(compact ? 300 : 420)
@@ -64,7 +66,7 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
   }, [rooms, highlightContainerId])
 
   function draw() {
-    const floorplanData = getFloorplanData()
+    const floorplanData = getFloorplanData(spaceId)
 
     // Build container position map from drawn_floorplan
     const drawnContainerPos: Record<string, { x: number; y: number; w: number; h: number }> = {}

@@ -3,7 +3,7 @@
  * For developer onboarding — one click to get a fully populated demo environment.
  */
 import Taro from '@tarojs/taro'
-import { createSpace, deleteSpace, getSpaces, addRoom, addContainer, updateContainer } from './space'
+import { createSpace, deleteSpace, getSpace, getSpaces, addRoom, deleteRoom, addContainer, updateContainer } from './space'
 import { serializeItems, Item } from './items'
 
 const FLOOR_PX_TO_MM = 30
@@ -94,17 +94,29 @@ function makeItem(i: { name: string; category: string; price: string }): Item {
   return { name: i.name, category: i.category, price: i.price, createdAt: today, photo: '', notes: '' }
 }
 
-export async function initExampleSpace() {
-  // Only delete the demo space, preserve user-created spaces
-  const existing = await getSpaces()
-  const demoSpace = existing.find((s: any) => s.name === '示例之家')
-  if (demoSpace) await deleteSpace(demoSpace._id)
+export async function initExampleSpace(targetSpaceId?: string) {
+  let spaceId: string
 
-  // Create space + rooms
-  const space = await createSpace('示例之家')
+  if (targetSpaceId) {
+    // Fill the given space — clear its existing rooms first
+    const space = await getSpace(targetSpaceId)
+    if (!space) return { rooms: 0, cabinets: 0, items: 0 }
+    for (const room of (space.rooms || [])) {
+      await deleteRoom(targetSpaceId, room._id)
+    }
+    spaceId = targetSpaceId
+  } else {
+    // Legacy: create a new demo space
+    const existing = await getSpaces()
+    const demoSpace = existing.find((s: any) => s.name === '示例之家')
+    if (demoSpace) await deleteSpace(demoSpace._id)
+    const space = await createSpace('示例之家')
+    spaceId = space._id
+  }
+
   const roomIdMap: Record<string, string> = {}
   for (const r of EXAMPLE_ROOMS) {
-    const room = await addRoom(space._id, r.name)
+    const room = await addRoom(spaceId, r.name)
     if (room) roomIdMap[r.name] = room._id
   }
 
@@ -127,7 +139,7 @@ export async function initExampleSpace() {
       }
     })
 
-    const created = await addContainer(space._id, roomId, {
+    const created = await addContainer(spaceId, roomId, {
       name: cab.name,
       type: 'custom',
       movable: false,
@@ -139,7 +151,7 @@ export async function initExampleSpace() {
 
     if (created) {
       const rectId = `example_cab_${ci}`
-      rectContainerMap[rectId] = { containerId: created._id, spaceId: space._id, roomId }
+      rectContainerMap[rectId] = { containerId: created._id, spaceId, roomId }
     }
   }
 
@@ -166,10 +178,9 @@ export async function initExampleSpace() {
     })),
   }
 
-  Taro.setStorageSync('drawn_floorplan', JSON.stringify(floorplan))
-  Taro.setStorageSync('rect_container_map', JSON.stringify(rectContainerMap))
+  Taro.setStorageSync(`drawn_floorplan_${spaceId}`, JSON.stringify(floorplan))
+  Taro.setStorageSync(`rect_container_map_${spaceId}`, JSON.stringify(rectContainerMap))
 
-  // Save draw_all_rects so the draw-editor can load existing layout
   const drawRects: any[] = []
   EXAMPLE_ROOMS.forEach((r, i) => {
     drawRects.push({ id: `room_${i}`, x: r.x, y: r.y, w: r.w, h: r.h, labels: [r.name], slotType: 'open', phase: 'room' })
@@ -180,7 +191,7 @@ export async function initExampleSpace() {
   EXAMPLE_CABINETS.forEach((c, i) => {
     drawRects.push({ id: `example_cab_${i}`, x: c.x, y: c.y, w: c.w, h: c.h, labels: [c.name], slotType: 'open', phase: 'cabinet' })
   })
-  Taro.setStorageSync('draw_all_rects', JSON.stringify(drawRects))
+  Taro.setStorageSync(`draw_all_rects_${spaceId}`, JSON.stringify(drawRects))
 
   const totalItems = EXAMPLE_CABINETS.reduce((sum, cab) =>
     sum + Object.values(cab.items).reduce((s: number, arr: any) => s + arr.length, 0), 0)

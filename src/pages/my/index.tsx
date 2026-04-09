@@ -1,7 +1,7 @@
 import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
-import { getSpaces, deleteSpace } from '../../services/space'
+import { getSpaces } from '../../services/space'
 import { cloudClearAll } from '../../services/cloud'
 import { initExampleSpace } from '../../services/init-space'
 import './index.scss'
@@ -79,13 +79,19 @@ export default function MyPage() {
 
   async function handleInitSpace() {
     const confirm = await Taro.showModal({
-      title: '初始化空间',
-      content: '将清除现有数据，创建示例房间、储物柜和物品。确定？',
+      title: '填充示例数据',
+      content: '将清除当前空间的房间数据，填充示例房间、储物柜和物品。确定？',
     })
     if (!confirm.confirm) return
     Taro.showLoading({ title: '初始化中...' })
     try {
-      const result = await initExampleSpace()
+      const spaces = await getSpaces()
+      if (spaces.length === 0) {
+        Taro.hideLoading()
+        Taro.showToast({ title: '请先创建空间', icon: 'none' })
+        return
+      }
+      const result = await initExampleSpace(spaces[0]._id)
       Taro.hideLoading()
       Taro.showToast({ title: `${result.rooms}房间 ${result.cabinets}柜 ${result.items}物品`, icon: 'success', duration: 2000 })
     } catch (e) {
@@ -98,7 +104,7 @@ export default function MyPage() {
   const menuItems = [
     { label: '个人信息', action: handleProfile },
     { label: `切换身份（当前：${userRole === 'organizer' ? '收纳师' : '住户'}）`, action: handleSwitchRole },
-    { label: '初始化空间（开发用）', action: handleInitSpace },
+    { label: '填充示例数据（开发用）', action: handleInitSpace },
     { label: '清空所有数据（开发用）', action: handleClearAll },
     { label: '联系收纳师', action: handleContact },
     { label: '关于我们', action: handleAbout },

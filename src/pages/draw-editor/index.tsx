@@ -1,5 +1,5 @@
 import { View, Text, Canvas, Input } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { getSpaces, getSpace, createSpace, deleteSpace, addRoom, addContainer } from '../../services/space'
 import { cloudSaveFloorplan } from '../../services/cloud'
@@ -62,6 +62,13 @@ interface DrawState {
 
 // ===== Component =====
 export default function DrawEditor() {
+  const router = useRouter()
+  const spaceId = router.params.spaceId!
+
+  const KEY_RECTS = `draw_all_rects_${spaceId}`
+  const KEY_FLOORPLAN = `drawn_floorplan_${spaceId}`
+  const KEY_MAP = `rect_container_map_${spaceId}`
+
   const [phase, setPhase] = useState<Phase>('room')
   const [allRects, setAllRects] = useState<Rect[]>([])
   const [selectedRectId, setSelectedRectId] = useState<string | null>(null)
@@ -140,19 +147,19 @@ export default function DrawEditor() {
   // Load saved data with validation
   useEffect(() => {
     try {
-      const saved = Taro.getStorageSync('draw_all_rects')
+      const saved = Taro.getStorageSync(KEY_RECTS)
       if (saved) {
         const rects = JSON.parse(saved) as Rect[]
         if (Array.isArray(rects) && rects.every(r => r && typeof r.x === 'number' && typeof r.phase === 'string')) {
           allRectsRef.current = rects; setAllRects(rects)
           pushHistory(rects)
         } else {
-          Taro.removeStorageSync('draw_all_rects')
+          Taro.removeStorageSync(KEY_RECTS)
         }
       }
     } catch (e) {
       console.error('load draw data failed:', e)
-      Taro.removeStorageSync('draw_all_rects')
+      Taro.removeStorageSync(KEY_RECTS)
     }
   }, [])
 
@@ -744,7 +751,7 @@ export default function DrawEditor() {
   // Count items in a cabinet by draw rect ID → space service container ID mapping
   async function countCabinetItems(rectId: string): Promise<number> {
     try {
-      const map = JSON.parse(Taro.getStorageSync('rect_container_map') || '{}')
+      const map = JSON.parse(Taro.getStorageSync(KEY_MAP) || '{}')
       const mapping = map[rectId]
       if (!mapping) return 0
 
@@ -929,7 +936,7 @@ export default function DrawEditor() {
       const json = generateJSON()
 
       // 1. Save visual floorplan data for FloorplanView (includes container positions)
-      Taro.setStorageSync('drawn_floorplan', JSON.stringify({
+      Taro.setStorageSync(KEY_FLOORPLAN, JSON.stringify({
         unit: json.unit, scale: json.scale,
         rooms: json.rooms, furniture: json.furniture,
         containers: json.containers.map((c: any) => ({
@@ -938,7 +945,7 @@ export default function DrawEditor() {
       }))
 
       // 2. Save rect data for draw-editor reload
-      Taro.setStorageSync('draw_all_rects', JSON.stringify(allRects))
+      Taro.setStorageSync(KEY_RECTS, JSON.stringify(allRects))
 
       // 3. Assign containers to rooms by spatial containment
       json.containers.forEach((c: any) => {
@@ -1014,17 +1021,17 @@ export default function DrawEditor() {
         })
         // Store mapping: draw rect ID → service IDs
         if (created) {
-          const map = JSON.parse(Taro.getStorageSync('rect_container_map') || '{}')
+          const map = JSON.parse(Taro.getStorageSync(KEY_MAP) || '{}')
           map[c.id] = { containerId: created._id, spaceId: space._id, roomId: serviceRoomId }
-          Taro.setStorageSync('rect_container_map', JSON.stringify(map))
+          Taro.setStorageSync(KEY_MAP, JSON.stringify(map))
         }
       }
 
       // Sync visual data to cloud (async, non-blocking)
       try {
-        const fpJson = Taro.getStorageSync('drawn_floorplan') || ''
-        const rectsJson = Taro.getStorageSync('draw_all_rects') || ''
-        const mapJson = Taro.getStorageSync('rect_container_map') || ''
+        const fpJson = Taro.getStorageSync(KEY_FLOORPLAN) || ''
+        const rectsJson = Taro.getStorageSync(KEY_RECTS) || ''
+        const mapJson = Taro.getStorageSync(KEY_MAP) || ''
         cloudSaveFloorplan(fpJson, rectsJson, mapJson).catch(e => console.warn('[Sync] floorplan:', e.message))
       } catch {}
 
@@ -1044,7 +1051,7 @@ export default function DrawEditor() {
 
   // ===== Save/Export =====
   function handleSave() {
-    Taro.setStorageSync('draw_all_rects', JSON.stringify(allRects))
+    Taro.setStorageSync(KEY_RECTS, JSON.stringify(allRects))
     Taro.showToast({ title: '已保存', icon: 'success' })
   }
 

@@ -1,10 +1,11 @@
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { getSpaces, getSpace, createSpace, createShareLink, resolveShareLink, pullFromCloudIfEmpty } from '../../services/space'
 import FloorplanView from '../../components/FloorplanView'
-import IsometricFloorplanView from '../../components/IsometricFloorplanView'
 import './index.scss'
+
+const IsometricFloorplanView = lazy(() => import('../../components/IsometricFloorplanView'))
 
 export default function Index() {
   const router = useRouter()
@@ -84,10 +85,13 @@ export default function Index() {
       placeholderText: '空间名称（如：张先生的家）',
     } as any)
     if (res.confirm && (res as any).content) {
-      await createSpace((res as any).content)
+      const space = await createSpace((res as any).content)
       const data = await getSpaces()
+      const newIdx = data.findIndex((s: any) => s._id === space._id)
       setSpaces(data)
-      switchSpace(data.length - 1)
+      setActiveSpaceIndex(newIdx >= 0 ? newIdx : data.length - 1)
+      const full = await getSpace(space._id)
+      setActiveSpace(full)
     }
   }
 
@@ -126,7 +130,7 @@ export default function Index() {
           <View
             className='editor-card-full'
             onClick={() => Taro.navigateTo({
-              url: '/pages/draw-editor/index',
+              url: `/pages/draw-editor/index?spaceId=${activeSpace?._id || ''}`,
               fail: (err) => {
                 console.error('navigateTo draw-editor failed:', err)
                 Taro.showToast({ title: '打开失败，请重试', icon: 'none' })
@@ -158,17 +162,20 @@ export default function Index() {
           {viewMode === '2d' && (
             <FloorplanView
               rooms={activeSpace.rooms}
+              spaceId={activeSpace._id}
               highlightContainerId={highlightId}
               onContainerClick={handleContainerClick}
             />
           )}
           {has3D && (
             <View style={{ display: viewMode === '3d' ? 'block' : 'none' }}>
-              <IsometricFloorplanView
-                rooms={activeSpace.rooms}
-                highlightContainerId={highlightId}
-                onContainerClick={handleContainerClick}
-              />
+              <Suspense fallback={<View><Text>加载3D视图...</Text></View>}>
+                <IsometricFloorplanView
+                  rooms={activeSpace.rooms}
+                  highlightContainerId={highlightId}
+                  onContainerClick={handleContainerClick}
+                />
+              </Suspense>
             </View>
           )}
         </View>

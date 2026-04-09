@@ -1,6 +1,5 @@
 import { PropsWithChildren, useEffect } from 'react'
 import Taro from '@tarojs/taro'
-import { seedMockDataIfNeeded } from './services/mock-data'
 import { pullFromCloudIfEmpty } from './services/space'
 import './app.scss'
 
@@ -12,7 +11,6 @@ function App({ children }: PropsWithChildren) {
       })
       console.log(`[${new Date().toISOString().slice(11,23)}] Cloud initialized`)
     }
-    seedMockDataIfNeeded()
     pullFromCloudIfEmpty()
 
     // Hackathon: always show onboarding on launch for demo purposes
