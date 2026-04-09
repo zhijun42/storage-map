@@ -37,16 +37,7 @@ export default function MyPage() {
     if (!confirm.confirm) return
     Taro.showLoading({ title: '清空中...' })
     try {
-      // Clear all localStorage keys
-      Taro.removeStorageSync('storage_map_data')
-      Taro.removeStorageSync('drawn_floorplan')
-      Taro.removeStorageSync('draw_all_rects')
-      Taro.removeStorageSync('rect_container_map')
-      Taro.removeStorageSync('user_profile')
-      Taro.removeStorageSync('mock_data_seeded_v6')
-      Taro.removeStorageSync('onboarding_done')
-      Taro.removeStorageSync('user_role')
-      // Clear cloud DB (all collections)
+      Taro.clearStorageSync()
       try { await cloudClearAll() } catch {}
       Taro.hideLoading()
       Taro.showToast({ title: '已清空', icon: 'success' })
@@ -115,7 +106,7 @@ export default function MyPage() {
       {/* Profile card */}
       <View className='profile-card'>
         <View className='avatar'>
-          <Text className='avatar-text'>{userRole === 'organizer' ? '师' : '户'}</Text>
+          <Text className='avatar-text'>{userRole === 'organizer' ? '🏠' : '👤'}</Text>
         </View>
         <View className='profile-info'>
           <Text className='profile-name'>冬宝</Text>
