@@ -1,7 +1,7 @@
 import { View, Text, Canvas, Input } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
-import { getSpaces, getSpace, createSpace, deleteSpace, addRoom, addContainer } from '../../services/space'
+import { getSpace, addRoom, addContainer, deleteRoom } from '../../services/space'
 import { cloudSaveFloorplan } from '../../services/cloud'
 import { CATEGORIES } from '../../services/items'
 import './index.scss'
@@ -63,7 +63,11 @@ interface DrawState {
 // ===== Component =====
 export default function DrawEditor() {
   const router = useRouter()
-  const spaceId = router.params.spaceId!
+  const spaceId = router.params.spaceId || ''
+
+  if (!spaceId) {
+    return <View style={{ padding: '80px 32px', textAlign: 'center' }}><Text>空间ID无效</Text></View>
+  }
 
   const KEY_RECTS = `draw_all_rects_${spaceId}`
   const KEY_FLOORPLAN = `drawn_floorplan_${spaceId}`
@@ -729,8 +733,8 @@ export default function DrawEditor() {
     })
     allRectsRef.current = newAll; setAllRects(newAll)
     pushHistory(newAll)
-    // For non-elevation phases, deselect after labeling
-    if (phase !== 'elevation') { selectedIdRef.current = null; setSelectedRectId(null) }
+    // For room/furniture phases, deselect after labeling. Keep selected for cabinet/elevation.
+    if (phase !== 'elevation' && phase !== 'cabinet') { selectedIdRef.current = null; setSelectedRectId(null) }
     setCustomInput('')
   }
 
@@ -961,18 +965,18 @@ export default function DrawEditor() {
         c.roomJsonId = room?.id
       })
 
-      // 4. Delete existing space, create fresh
-      const existingSpaces = await getSpaces()
-      for (const s of existingSpaces) {
-        await deleteSpace(s._id)
+      // 4. Clear existing rooms in the current space, then re-create from drawing
+      const currentSpace = await getSpace(spaceId)
+      if (currentSpace) {
+        for (const room of (currentSpace.rooms || [])) {
+          await deleteRoom(spaceId, room._id)
+        }
       }
-
-      const space = await createSpace('我的家')
 
       // 5. Create rooms and track ID mapping (drawId → serviceId)
       const roomIdMap: Record<string, string> = {}
       for (const drawnRoom of json.rooms) {
-        const room = await addRoom(space._id, drawnRoom.name)
+        const room = await addRoom(spaceId, drawnRoom.name)
         if (room) roomIdMap[drawnRoom.id] = room._id
       }
 
@@ -1009,7 +1013,7 @@ export default function DrawEditor() {
           }))
         }
 
-        const created = await addContainer(space._id, serviceRoomId, {
+        const created = await addContainer(spaceId, serviceRoomId, {
           name: c.name,
           type: 'custom',
           movable: false,
@@ -1022,7 +1026,7 @@ export default function DrawEditor() {
         // Store mapping: draw rect ID → service IDs
         if (created) {
           const map = JSON.parse(Taro.getStorageSync(KEY_MAP) || '{}')
-          map[c.id] = { containerId: created._id, spaceId: space._id, roomId: serviceRoomId }
+          map[c.id] = { containerId: created._id, spaceId, roomId: serviceRoomId }
           Taro.setStorageSync(KEY_MAP, JSON.stringify(map))
         }
       }

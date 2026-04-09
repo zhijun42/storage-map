@@ -93,6 +93,7 @@ export default function MoveItemPage() {
         <View className='floorplan-section'>
           <FloorplanView
             rooms={space.rooms}
+            spaceId={spaceId}
             highlightContainerId={selectedContainerId}
             onContainerClick={handleContainerClick}
           />

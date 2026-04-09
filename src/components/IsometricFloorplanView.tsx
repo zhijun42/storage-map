@@ -21,6 +21,7 @@ interface Room {
 
 interface Props {
   rooms: Room[]
+  spaceId?: string
   highlightContainerId?: string | null
   onContainerClick?: (roomId: string, containerId: string) => void
 }
@@ -37,9 +38,10 @@ const CABINET_H = 2200
 const MM_TO_M = 0.001
 const POLAR_ANGLE = Math.PI / 4 // 45 degrees from top
 
-function getFloorplanData(): any {
+function getFloorplanData(spaceId?: string): any {
+  if (!spaceId) return null
   try {
-    const saved = Taro.getStorageSync('drawn_floorplan')
+    const saved = Taro.getStorageSync(`drawn_floorplan_${spaceId}`)
     if (saved) {
       const parsed = JSON.parse(saved)
       if (parsed?.rooms?.length > 0) return parsed
@@ -48,7 +50,7 @@ function getFloorplanData(): any {
   return null
 }
 
-export default function IsometricFloorplanView({ rooms, highlightContainerId, onContainerClick }: Props) {
+export default function IsometricFloorplanView({ rooms, spaceId, highlightContainerId, onContainerClick }: Props) {
   const sceneRef = useRef<any>(null)
   const rendererRef = useRef<any>(null)
   const cameraRef = useRef<any>(null)
@@ -174,7 +176,7 @@ export default function IsometricFloorplanView({ rooms, highlightContainerId, on
   }
 
   function buildScene(THREE: any, scene: any) {
-    const floorplan = getFloorplanData()
+    const floorplan = getFloorplanData(spaceId)
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity
 
     if (!floorplan) return { minX: 0, minZ: 0, maxX: 5, maxZ: 5 }

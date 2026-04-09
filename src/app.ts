@@ -12,12 +12,6 @@ function App({ children }: PropsWithChildren) {
       console.log(`[${new Date().toISOString().slice(11,23)}] Cloud initialized`)
     }
     pullFromCloudIfEmpty()
-
-    // Hackathon: always show onboarding on launch for demo purposes
-    Taro.removeStorageSync('onboarding_done')
-    setTimeout(() => {
-      Taro.navigateTo({ url: '/pages/onboarding/index' })
-    }, 500)
   }, [])
 
   return children

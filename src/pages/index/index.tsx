@@ -16,8 +16,13 @@ export default function Index() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
   const [has3D, setHas3D] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    // Hackathon: always show onboarding (remove flag on launch)
+    Taro.removeStorageSync('onboarding_done')
+    Taro.navigateTo({ url: '/pages/onboarding/index' })
+
     const shareToken = router.params.shareToken
     if (shareToken) handleShareToken(shareToken)
   }, [])
@@ -25,7 +30,11 @@ export default function Index() {
   useDidShow(() => {
     const role = Taro.getStorageSync('user_role') || 'organizer'
     setUserRole(role as any)
-    loadSpaces()
+    const onboarded = Taro.getStorageSync('onboarding_done')
+    if (onboarded) {
+      setReady(true)
+      loadSpaces()
+    }
   })
 
   async function handleShareToken(token: string) {
@@ -95,6 +104,8 @@ export default function Index() {
     }
   }
 
+  if (!ready) return <View className='index-page' />
+
   return (
     <View className='index-page'>
       {/* Space switcher — organizer */}
@@ -124,13 +135,13 @@ export default function Index() {
         </View>
       )}
 
-      {/* Editor entry — organizer only */}
-      {isOrganizer && (
+      {/* Editor entry — organizer only, requires active space */}
+      {isOrganizer && activeSpace && (
         <View className='editor-section'>
           <View
             className='editor-card-full'
             onClick={() => Taro.navigateTo({
-              url: `/pages/draw-editor/index?spaceId=${activeSpace?._id || ''}`,
+              url: `/pages/draw-editor/index?spaceId=${activeSpace._id}`,
               fail: (err) => {
                 console.error('navigateTo draw-editor failed:', err)
                 Taro.showToast({ title: '打开失败，请重试', icon: 'none' })
@@ -172,6 +183,7 @@ export default function Index() {
               <Suspense fallback={<View><Text>加载3D视图...</Text></View>}>
                 <IsometricFloorplanView
                   rooms={activeSpace.rooms}
+                  spaceId={activeSpace._id}
                   highlightContainerId={highlightId}
                   onContainerClick={handleContainerClick}
                 />

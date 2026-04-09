@@ -45,15 +45,15 @@ interface HitArea {
 
 // Load drawn floorplan from localStorage, fall back to static JSON
 function getFloorplanData(spaceId?: string): any {
+  if (!spaceId) return { rooms: [], furniture: [], containers: [] }
   try {
-    const key = spaceId ? `drawn_floorplan_${spaceId}` : 'drawn_floorplan'
-    const saved = Taro.getStorageSync(key)
+    const saved = Taro.getStorageSync(`drawn_floorplan_${spaceId}`)
     if (saved) {
       const parsed = JSON.parse(saved)
       if (parsed?.rooms?.length > 0) return parsed
     }
   } catch {}
-  return staticFloorplan
+  return { rooms: [], furniture: [], containers: [] }
 }
 
 export default function FloorplanView({ rooms, compact, spaceId, highlightContainerId, onContainerClick }: FloorplanViewProps) {
@@ -63,7 +63,7 @@ export default function FloorplanView({ rooms, compact, spaceId, highlightContai
 
   useEffect(() => {
     if (rooms.length > 0) setTimeout(() => draw(), 200)
-  }, [rooms, highlightContainerId])
+  }, [rooms, spaceId, highlightContainerId])
 
   function draw() {
     const floorplanData = getFloorplanData(spaceId)

@@ -126,9 +126,8 @@ export default function AddItemPage() {
           </View>
         </View>
 
-        {/* Date — auto */}
-        <View className='field'>
-          <Text className='label'>录入日期</Text>
+        {/* Date — auto, hidden from UI */}
+        <View className='field' style={{ display: 'none' }}>
           <View className='input-wrap readonly'>
             <Text className='field-value'>{today}</Text>
           </View>
