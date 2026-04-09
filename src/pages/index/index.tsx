@@ -268,9 +268,6 @@ export default function Index() {
         <View className='action-btn' onClick={() => Taro.navigateTo({ url: '/pages/search/index' })}>
           <Text className='action-text'>物品查询</Text>
         </View>
-        <View className='action-btn' onClick={() => Taro.navigateTo({ url: '/pages/capture/index' })}>
-          <Text className='action-text'>拍照录入</Text>
-        </View>
         <View className='action-btn ai' onClick={() => Taro.navigateTo({ url: '/pages/ai-strategy/index' })}>
           <Text className='action-text-ai'>AI 收纳策略</Text>
         </View>
