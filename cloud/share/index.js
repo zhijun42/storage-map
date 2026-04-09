@@ -34,14 +34,9 @@ exports.main = async (event) => {
     }
     const share = res.data[0]
 
-    // Owner opening their own share link
-    if (share.createdBy === openId) {
-      return { success: true, spaceId: share.spaceId, permission: 'owner' }
-    }
-
-    // Already claimed by this user
-    if (share.claimedBy === openId) {
-      return { success: true, spaceId: share.spaceId, permission: share.permission }
+    // Already claimed by this user (owner or editor)
+    if (share.claimedBy === openId || (share.createdBy === openId && share.claimedBy)) {
+      return { success: true, spaceId: share.spaceId, permission: share.createdBy === openId ? 'owner' : share.permission }
     }
 
     // Already claimed by someone else
@@ -49,11 +44,12 @@ exports.main = async (event) => {
       return { success: false, error: '该链接已被其他用户使用' }
     }
 
-    // Unclaimed — bind to this user
+    // Unclaimed — bind to this user (locks the token)
     await db.collection('shares').doc(share._id).update({
       data: { claimedBy: openId, claimedAt: new Date() },
     })
-    return { success: true, spaceId: share.spaceId, permission: share.permission }
+    const permission = share.createdBy === openId ? 'owner' : share.permission
+    return { success: true, spaceId: share.spaceId, permission }
   }
 
   if (action === 'revoke') {
