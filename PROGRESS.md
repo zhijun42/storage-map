@@ -1,132 +1,108 @@
 # Storage Map - 开发进度记录
 
-> 最后更新：2026-04-08
+> 最后更新：2026-04-09
 
 ## 项目概述
 
 收纳物品地图微信小程序 — 帮助收纳师快速制作交互式物品地图，帮助住户查找家中物品。
 
 - **仓库**：https://github.com/zhijun42/storage-map (Private)
-- **技术栈**：Taro (React) + 微信云开发 (MongoDB + 云存储 + 云函数)
+- **技术栈**：Taro (React + TypeScript + SCSS) + 微信云开发
 - **云环境ID**：`cloud1-1g7j9oatd5d871f3`
 - **AppID**：`wx856dc260293a0377`
+- **AI**：Kimi K2.5（月之暗面）
+- **测试**：Jest 43 tests
 
-## 已完成
+## 提交记录
 
-### 产品设计
-- [x] SPECS.md 产品规格文档（产品定位、数据模型、技术架构、商业模式、Hackathon计划）
-- [x] 数据模型设计：Space > Room > Container (movable) > Slot
-- [x] 商业模式：收纳师订阅制¥29/月，住户永久免费
-- [x] 团队分工方案（按功能模块垂直拆分）
+| Commit | Tag | 内容 |
+|--------|-----|------|
+| eb54116 | syt_1 | Visual polish and UX improvements |
+| 9b4bf18 | syt_2 | Draw editor 三阶段 + 立面编辑 |
+| eb10f84 | syt_3 | 阶段二数据对齐 — 绘制数据替换静态源 |
+| c597111 | syt_4 | 灵活 slot 布局 + 2.5D 类别 + cloud schema |
+| fea6ed6 | syt_5 | 用户档案 + AI 策略 + seed items |
+| 176b170 | syt_6 | 智能推荐收纳位置 + 统一类别 |
+| 98c1b0b | syt_7 | 切换 Kimi K2.5 + model logging |
+| c6c1911 | syt_8 | 本地优先 + 异步云同步架构 |
+| aef4ded | syt_9 | 级联删除 + Jest 测试套件 (36 tests) |
+| f508be7 | syt_10 | 平面图云同步 + integration tests (43 tests) |
+| f429b57 | syt_11 | 清空修复 + 初始化空间 + 开发工具 |
 
-### 技术搭建
-- [x] GitHub Private仓库创建
-- [x] Taro项目初始化（React + TypeScript + SCSS）
-- [x] 微信云开发环境开通和配置
-- [x] project.config.json配置（miniprogramRoot + cloudfunctionRoot）
-- [x] 微信小程序编译验证通过
-- [x] 微信开发者工具中模拟器预览成功
+## 已完成功能
 
-### 页面开发（4个页面）
-- [x] **首页** (pages/index)：Space列表、创建新Space、搜索入口
-- [x] **空间详情** (pages/space)：Room标签切换、Container卡片列表（含Slot预览）、添加Room/Container
-- [x] **容器编辑** (pages/container)：Slot列表编辑、物品描述输入、拍照关联
-- [x] **搜索** (pages/search)：全局搜索物品，显示完整路径
+### 空间绘制编辑器 (draw-editor)
+- [x] Canvas 2D 绘制引擎（触摸拖拽、边缘吸附、碰撞检测、触觉反馈）
+- [x] 三阶段流程：房间 → 家具 → 储物柜（步骤指示器引导）
+- [x] 立面编辑：柜体内部隔间自由绘制，无边框限制
+- [x] 双指缩放平移（0.25x ~ 5x）
+- [x] 渲染样式：房间白底黑边、家具灰边半透明、储物柜红色+X标记
+- [x] 级联删除：删除房间自动删除内部家具/储物柜，有物品时阻止删除
+- [x] JSON 导出：rooms (walls) + furniture + containers (columns/slots)
 
-### 数据服务层
-- [x] **services/space.ts**：统一接口层，自动切换localStorage/云数据库
-- [x] **services/cloud.ts**：微信云数据库完整CRUD（spaces/rooms/containers/slots/shares）
-- [x] 照片上传到云存储
-- [x] 搜索功能
-- [x] 分享链接生成/解析
-- [x] 错误处理：云调用失败自动fallback到localStorage
-- [x] Timestamp日志（`[HH:MM:SS.mmm] [Cloud]` 前缀）
+### 数据对齐
+- [x] handleFinish 数据管道：绘制 → space service CRUD
+- [x] 空间包含检测：自动分配储物柜到对应房间
+- [x] FloorplanView 双数据源：drawn_floorplan (localStorage) + container 坐标
+- [x] 平面图居中渲染（min/max 边界框计算）
+- [x] cloud.ts 字段修复：container x/y/width/height、slot rx/ry/rw/rh/categories
+- [x] rect → container ID 映射表
 
-### 云函数
-- [x] **cloud/init-db**：自动创建数据库集合
-- [x] **cloud/share**：分享token生成和解析
+### 2.5D 可视化 (IsometricView)
+- [x] 灵活布局：slot 有 rx/ry/rw/rh → CSS 绝对定位还原绘制布局
+- [x] 旧数据兼容：无坐标 → flex 等高布局
+- [x] 类别显示：合并 slot.categories + items[].category
 
-### 云数据库
-- [x] 云环境开通
-- [x] spaces集合已创建并有数据
-- [x] rooms集合已创建并有数据
-- [x] containers集合已创建
-- [x] slots集合已创建
-- [x] shares集合已创建
+### 物品管理
+- [x] 物品录入（拍照/表单）
+- [x] 物品搜索 + 高亮联动
+- [x] 物品详情页
+- [x] 15 类统一类别（衣物/鞋包/数码/书籍/化妆品等）
+- [x] 智能推荐收纳位置（评分算法：类别匹配 > 同类物品 > 空间充裕度）
 
-## 已知问题
+### AI 收纳策略
+- [x] Kimi K2.5 云函数（cloud/ai-strategy）
+- [x] Prompt：用户档案 + 房屋布局 + 物品数据 → 收纳建议 + 风水 + 购置推荐
+- [x] 统计可视化：数据概览卡片 + 物品分类条形图
+- [x] Markdown 渲染（统一字体 26px）
+- [x] "Powered by" 模型标签
 
-1. **索引建议**：云数据库建议为spaces/rooms/containers添加组合索引（_openid+排序字段）——MVP可忽略
-2. **getSpace并行查询**：已优化为Promise.all，但仍可能在弱网环境下timeout
+### 用户档案
+- [x] 7 字段选填表单（性别/年龄/职业/性格/收纳频率/居住人数/生活习惯）
+- [x] 首次启动自动引导
+- [x] 「我的」页面入口 + profile card 摘要
 
-## 第二次Session完成（2026-04-08）
+### 数据架构
+- [x] 本地优先：所有读写操作 localStorage 即时完成
+- [x] 异步云同步：写操作 fire-and-forget 推送云端
+- [x] 启动同步：本地空时从云端拉取（spaces + floorplans）
+- [x] 平面图云同步：floorplans 集合存储视觉数据 + 矩形数据 + ID 映射
 
-### 容器编辑页打磨
-- [x] 删除分层（至少保留一层）
-- [x] 分层上下排序
-- [x] 分层重命名
-- [x] 照片上传到云存储（使用uploadPhoto服务）
-- [x] 上传中显示loading
-- [x] 删除容器（带确认弹窗，删除后自动返回）
-- [x] 保存状态指示器
-- [x] 键盘遮挡处理（adjustPosition）
+### 开发工具
+- [x] 初始化空间：一键创建示例房间 + 储物柜 + 物品
+- [x] 清空所有数据：localStorage + 云端全部清除
+- [x] 联系收纳师入口（「我的」+ AI 结果页）
 
-### 搜索功能完善
-- [x] 搜索结果高亮匹配关键词（橙色高亮）
-- [x] 搜索结果计数显示
-- [x] 点击搜索结果可直接跳转到对应容器页面
-- [x] 搜索结果返回spaceId/roomId/containerId用于导航
+### 测试
+- [x] Jest + ts-jest 测试框架
+- [x] items.test.ts (10 tests)：CATEGORIES + normalizeItems + serializeItems
+- [x] space.test.ts (19 tests)：Space/Room/Container CRUD + searchItems
+- [x] delete-cascade.test.ts (7 tests)：ID 映射 + 物品检查 + 级联删除
+- [x] floorplan-sync.test.ts (7 tests)：云端同步 + 恢复 + 端到端流程
 
-### 分享功能
-- [x] 空间详情页添加"分享"按钮
-- [x] 生成分享token并弹窗显示
-- [x] 注册useShareAppMessage支持微信内分享
-- [x] 空间详情页添加删除房间功能
+## 页面清单
 
-### UI美化
-- [x] 全局背景渐变（#f0f4f8 → #e8ecf1）
-- [x] 统一圆角为20px
-- [x] 按钮渐变色（#4a90d9 → #357abd）
-- [x] 空间卡片左侧蓝色指示条
-- [x] 统一色彩体系（标题#1a1a2e、正文#2c3e50、辅助#8e99a4）
-- [x] 卡片阴影优化（更柔和的4px 12px）
-- [x] 按下反馈动画（scale 0.98）
-- [x] Room标签激活态渐变+阴影
-
-### 其他改进
-- [x] 从容器页返回空间页时自动刷新数据（useDidShow）
-
-## 未完成
-
-### Nice to Have
-- [ ] 容器模板库（衣柜/斗柜/书架等预设）
-- [ ] 可移动容器的拖拽迁移
-- [ ] 模糊搜索（Fuse.js）
-- [ ] 3D可视化视图（WebView嵌入Three.js H5页面）
-- [ ] 照片拍摄功能在真机上的测试
-
-## 项目结构
-
-```
-storage-map/
-├── SPECS.md                    ← 产品规格文档
-├── PROGRESS.md                 ← 本文件
-├── project.config.json         ← 微信小程序项目配置
-├── config/index.ts             ← Taro构建配置
-├── cloud/
-│   ├── init-db/                ← 云函数：初始化数据库集合
-│   └── share/                  ← 云函数：分享链接
-├── src/
-│   ├── app.ts                  ← 应用入口（云开发初始化）
-│   ├── app.config.ts           ← 路由配置
-│   ├── pages/
-│   │   ├── index/              ← 首页
-│   │   ├── space/              ← 空间详情
-│   │   ├── container/          ← 容器编辑
-│   │   └── search/             ← 搜索
-│   └── services/
-│       ├── space.ts            ← 统一数据接口（localStorage/云数据库自动切换）
-│       ├── cloud.ts            ← 云数据库操作
-│       └── init-db.ts          ← 数据库初始化检查
-└── dist/weapp/                 ← 编译产出
-```
+| 页面 | 路径 | 功能 |
+|------|------|------|
+| 物品地图（首页） | pages/index | FloorplanView + 操作入口 |
+| 物品清单 | pages/itemlist | 按物品/按房间两种视图 |
+| 我的 | pages/my | 设置 + 开发工具 |
+| 空间绘制 | pages/draw-editor | Canvas 三阶段绘制 + 立面 |
+| 用户档案 | pages/profile | 个人信息选填表单 |
+| AI 收纳策略 | pages/ai-strategy | AI 生成 + 统计 + Markdown |
+| 空间详情 | pages/space | Room tabs + Container 列表 |
+| 容器编辑 | pages/container | 2.5D 轴测图 + 物品管理 |
+| 物品搜索 | pages/search | 全局搜索 + 平面图高亮 |
+| 拍照录入 | pages/capture | 表单 + 智能推荐位置 |
+| 添加物品 | pages/add-item | 物品录入表单 |
+| 物品详情 | pages/item-detail | 照片 + 字段详情 |
