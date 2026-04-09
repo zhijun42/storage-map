@@ -40,7 +40,8 @@ export default function MyPage() {
       Taro.clearStorageSync()
       try { await cloudClearAll() } catch {}
       Taro.hideLoading()
-      Taro.showToast({ title: '已清空', icon: 'success' })
+      Taro.showToast({ title: '已清空，即将重启', icon: 'success' })
+      setTimeout(() => Taro.reLaunch({ url: '/pages/index/index' }), 800)
     } catch (e) {
       Taro.hideLoading()
       console.error('clear error:', e)
