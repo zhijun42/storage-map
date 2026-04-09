@@ -1,7 +1,7 @@
 import { View, Text } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { getSpaces, getSpace, createSpace, createShareLink, resolveShareLink, pullFromCloudIfEmpty } from '../../services/space'
+import { getSpaces, getSpace, createSpace, createShareLink, resolveShareLink, pullSharedSpace } from '../../services/space'
 import FloorplanView from '../../components/FloorplanView'
 import './index.scss'
 
@@ -48,7 +48,7 @@ export default function Index() {
       }
       Taro.setStorageSync('user_role', 'resident')
       setUserRole('resident')
-      await pullFromCloudIfEmpty()
+      await pullSharedSpace(result.spaceId)
       Taro.showToast({ title: '已加入空间', icon: 'success' })
       loadSpaces()
     } catch {

@@ -1,7 +1,7 @@
 import { View, Text, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState } from 'react'
-import { resolveShareLink, pullFromCloudIfEmpty } from '../../services/space'
+import { resolveShareLink, pullSharedSpace } from '../../services/space'
 import './index.scss'
 
 export default function OnboardingPage() {
@@ -29,7 +29,7 @@ export default function OnboardingPage() {
         Taro.showModal({ title: '加入失败', content: result.error || '分享码无效', showCancel: false })
         return
       }
-      await pullFromCloudIfEmpty()
+      await pullSharedSpace(result.spaceId)
       Taro.setStorageSync('user_role', 'resident')
       Taro.setStorageSync('onboarding_done', '1')
       setLoading(false)

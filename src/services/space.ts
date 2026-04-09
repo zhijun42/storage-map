@@ -83,6 +83,27 @@ export async function pullFromCloudIfEmpty() {
   }
 }
 
+export async function pullSharedSpace(spaceId: string) {
+  if (!useCloud()) return false
+  try {
+    const space = await cloudService.cloudGetSpace(spaceId)
+    if (!space) return false
+    const data = getData()
+    const existing = data.spaces.findIndex((s: any) => s._id === spaceId)
+    if (existing >= 0) {
+      data.spaces[existing] = space
+    } else {
+      data.spaces.push(space)
+    }
+    saveData(data)
+    console.log(`[Sync] Pulled shared space: ${space.name}`)
+    return true
+  } catch (err: any) {
+    console.warn('[Sync] Pull shared space failed:', err.message || err)
+    return false
+  }
+}
+
 // ===============================
 // 统一接口 — 本地优先
 // ===============================
