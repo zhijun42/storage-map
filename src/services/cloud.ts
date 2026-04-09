@@ -21,74 +21,33 @@ function log(msg: string, ...args: any[]) {
   console.log(`[${ts}] [Cloud] ${msg}`, ...args)
 }
 
+// ===== Space API (via cloud function) =====
+
+async function callSpaceApi(action: string, data: any = {}) {
+  const res = await Taro.cloud!.callFunction({
+    name: 'space-api',
+    data: { action, ...data },
+  }) as any
+  if (!res.result?.success) {
+    throw new Error(res.result?.error || `space-api ${action} failed`)
+  }
+  return res.result
+}
+
 // ===== Space CRUD =====
 
 export async function cloudGetSpaces() {
   log('getSpaces start')
-  const db = getDb()
-  const res = await db.collection('spaces').orderBy('createdAt', 'desc').get()
-  log('getSpaces got', res.data.length, 'spaces')
-
-  const spaceIds = res.data.map((s: any) => s._id)
-  if (spaceIds.length === 0) return []
-
-  const [roomsRes, containersRes] = await Promise.all([
-    db.collection('rooms').where({ spaceId: db.command.in(spaceIds.slice(0, 20)) }).get(),
-    db.collection('containers').where({ spaceId: db.command.in(spaceIds.slice(0, 20)) }).get(),
-  ])
-
-  return res.data.map((s: any) => ({
-    ...s,
-    roomCount: roomsRes.data.filter((r: any) => r.spaceId === s._id).length,
-    containerCount: containersRes.data.filter((c: any) => c.spaceId === s._id).length,
-  }))
+  const result = await callSpaceApi('getSpaces')
+  log('getSpaces got', result.spaces.length, 'spaces')
+  return result.spaces
 }
 
 export async function cloudGetSpace(id: string) {
   log('getSpace start', id)
-  const db = getDb()
-
-  // 并行查询spaces+rooms+containers（减少串行等待）
-  const [spaceRes, roomsRes, containersRes] = await Promise.all([
-    db.collection('spaces').doc(id).get(),
-    db.collection('rooms').where({ spaceId: id }).orderBy('order', 'asc').get(),
-    db.collection('containers').where({ spaceId: id }).orderBy('order', 'asc').get(),
-  ])
-  log('getSpace parallel queries done. rooms:', roomsRes.data.length, 'containers:', containersRes.data.length)
-
-  const space = spaceRes.data
-
-  // 查询slots（只在有containers时）
-  let allSlots: any[] = []
-  const containerIds = containersRes.data.map((c: any) => c._id)
-  if (containerIds.length > 0) {
-    const slotsRes = await db.collection('slots')
-      .where({ containerId: db.command.in(containerIds.slice(0, 20)) })
-      .orderBy('order', 'asc')
-      .get()
-    allSlots = slotsRes.data
-    log('getSpace got', allSlots.length, 'slots')
-  }
-
-  // 组装嵌套结构
-  const rooms = roomsRes.data.map((room: any) => {
-    const roomContainers = containersRes.data
-      .filter((c: any) => c.roomId === room._id && !c.parentId)
-      .map((container: any) => ({
-        ...container,
-        slots: allSlots.filter((s: any) => s.containerId === container._id),
-        children: containersRes.data
-          .filter((c: any) => c.parentId === container._id)
-          .map((child: any) => ({
-            ...child,
-            slots: allSlots.filter((s: any) => s.containerId === child._id),
-          })),
-      }))
-    return { ...room, containers: roomContainers }
-  })
-
+  const result = await callSpaceApi('getSpace', { spaceId: id })
   log('getSpace done')
-  return { ...space, rooms }
+  return result.space
 }
 
 export async function cloudCreateSpace(name: string) {
@@ -134,117 +93,27 @@ export async function cloudDeleteSpace(id: string) {
 // ===== Room CRUD =====
 
 export async function cloudAddRoom(spaceId: string, name: string) {
-  const db = getDb()
-  const count = await db.collection('rooms').where({ spaceId }).count()
-  const res = await db.collection('rooms').add({
-    data: {
-      spaceId,
-      name,
-      order: count.total,
-      createdAt: new Date(),
-    },
-  })
-  return { _id: res._id, name, containers: [] }
+  const result = await callSpaceApi('addRoom', { spaceId, name })
+  return result.room
 }
 
 export async function cloudDeleteRoom(spaceId: string, roomId: string) {
-  const db = getDb()
-  // 级联删除containers和slots
-  const containers = await db.collection('containers').where({ roomId }).get()
-  for (const c of containers.data) {
-    await db.collection('slots').where({ containerId: c._id }).remove()
-  }
-  await db.collection('containers').where({ roomId }).remove()
-  await db.collection('rooms').doc(roomId).remove()
+  await callSpaceApi('deleteRoom', { spaceId, roomId })
 }
 
 // ===== Container CRUD =====
 
 export async function cloudAddContainer(spaceId: string, roomId: string, container: any) {
-  const db = getDb()
-  const count = await db.collection('containers').where({ roomId }).count()
-
-  const containerData: any = {
-    spaceId,
-    roomId,
-    parentId: container.parentId || null,
-    name: container.name,
-    type: container.type || 'custom',
-    movable: container.movable || false,
-    photo: container.photo || '',
-    order: count.total,
-    createdAt: new Date(),
-  }
-  // Preserve spatial + elevation fields from draw-editor
-  if (container.x != null) containerData.x = container.x
-  if (container.y != null) containerData.y = container.y
-  if (container.width != null) containerData.width = container.width
-  if (container.height != null) containerData.height = container.height
-  if (container.elevationAspect != null) containerData.elevationAspect = container.elevationAspect
-
-  const res = await db.collection('containers').add({ data: containerData })
-
-  const containerId = res._id
-
-  // 创建slots（包括空间布局数据）
-  const slots = container.slots || [{ label: '第1层', type: 'shelf', items: '', photo: '' }]
-  for (let i = 0; i < slots.length; i++) {
-    const slotData: any = {
-      containerId,
-      label: slots[i].label,
-      type: slots[i].type || 'shelf',
-      items: slots[i].items || '',
-      photo: slots[i].photo || '',
-      order: i,
-    }
-    if (slots[i].categories) slotData.categories = slots[i].categories
-    if (slots[i].rx != null) { slotData.rx = slots[i].rx; slotData.ry = slots[i].ry; slotData.rw = slots[i].rw; slotData.rh = slots[i].rh }
-    await db.collection('slots').add({ data: slotData })
-  }
-
-  return { _id: containerId, ...container }
+  const result = await callSpaceApi('addContainer', { spaceId, roomId, container })
+  return result.container
 }
 
 export async function cloudUpdateContainer(spaceId: string, roomId: string, containerId: string, updates: any) {
-  const db = getDb()
-
-  // 如果更新了slots，需要删除旧的并创建新的
-  if (updates.slots) {
-    await db.collection('slots').where({ containerId }).remove()
-    for (let i = 0; i < updates.slots.length; i++) {
-      const slotData: any = {
-        containerId,
-        label: updates.slots[i].label,
-        type: updates.slots[i].type || 'shelf',
-        items: updates.slots[i].items || '',
-        photo: updates.slots[i].photo || '',
-        order: i,
-      }
-      if (updates.slots[i].categories) slotData.categories = updates.slots[i].categories
-      if (updates.slots[i].rx != null) { slotData.rx = updates.slots[i].rx; slotData.ry = updates.slots[i].ry; slotData.rw = updates.slots[i].rw; slotData.rh = updates.slots[i].rh }
-      await db.collection('slots').add({ data: slotData })
-    }
-    // 从updates中移除slots，剩余字段更新container本身
-    const { slots, ...containerUpdates } = updates
-    if (Object.keys(containerUpdates).length > 0) {
-      await db.collection('containers').doc(containerId).update({ data: containerUpdates })
-    }
-  } else {
-    await db.collection('containers').doc(containerId).update({ data: updates })
-  }
+  await callSpaceApi('updateContainer', { spaceId, roomId, containerId, updates })
 }
 
 export async function cloudDeleteContainer(spaceId: string, roomId: string, containerId: string) {
-  const db = getDb()
-  // 删除子容器和它们的slots
-  const children = await db.collection('containers').where({ parentId: containerId }).get()
-  for (const child of children.data) {
-    await db.collection('slots').where({ containerId: child._id }).remove()
-  }
-  await db.collection('containers').where({ parentId: containerId }).remove()
-  // 删除自身的slots和container
-  await db.collection('slots').where({ containerId }).remove()
-  await db.collection('containers').doc(containerId).remove()
+  await callSpaceApi('deleteContainer', { spaceId, roomId, containerId })
 }
 
 // ===== Search =====
