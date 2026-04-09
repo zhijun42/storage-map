@@ -264,6 +264,7 @@ export default function CapturePage() {
             <View className='map-picker'>
               <FloorplanView
                 rooms={rooms}
+                spaceId={space?._id}
                 compact
                 highlightContainerId={selectedContainerIndex >= 0 ? containers[selectedContainerIndex]?._id : null}
                 onContainerClick={(roomId, containerId) => {

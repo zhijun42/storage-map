@@ -8,6 +8,7 @@ import './index.scss'
 const IsometricFloorplanView = lazy(() => import('../../components/IsometricFloorplanView'))
 
 export default function Index() {
+  console.log('[index] component mounting')
   const router = useRouter()
   const [spaces, setSpaces] = useState<any[]>([])
   const [activeSpace, setActiveSpace] = useState<any>(null)

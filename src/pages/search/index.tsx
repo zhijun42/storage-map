@@ -43,6 +43,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<any[]>([])
   const [searched, setSearched] = useState(false)
   const [rooms, setRooms] = useState<any[]>([])
+  const [currentSpaceId, setCurrentSpaceId] = useState('')
   const [highlightContainerId, setHighlightContainerId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function SearchPage() {
   async function loadRooms() {
     const spaces = await getSpaces()
     if (spaces.length > 0) {
+      setCurrentSpaceId(spaces[0]._id)
       const space = await getSpace(spaces[0]._id)
       if (space?.rooms) setRooms(space.rooms)
     }
@@ -89,6 +91,7 @@ export default function SearchPage() {
         <View className='floorplan-section'>
           <FloorplanView
             rooms={rooms}
+            spaceId={currentSpaceId}
             compact
             highlightContainerId={highlightContainerId}
           />
