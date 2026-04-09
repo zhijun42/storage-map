@@ -1,4 +1,4 @@
-import { View, Text, Input, Picker, Image } from '@tarojs/components'
+import { View, Text, Input, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { useState } from 'react'
 import { getSpace, updateContainer, uploadPhoto } from '../../services/space'
@@ -107,14 +107,15 @@ export default function AddItemPage() {
         {/* Category — required */}
         <View className='field'>
           <Text className='label'>物品类型 *</Text>
-          <Picker mode='selector' range={CATEGORIES} onChange={e => setCategoryIndex(Number(e.detail.value))}>
-            <View className='picker-wrap'>
-              <Text className={`picker-text ${categoryIndex >= 0 ? '' : 'placeholder'}`}>
-                {categoryIndex >= 0 ? CATEGORIES[categoryIndex] : '请选择类型'}
-              </Text>
-              <Text className='picker-arrow'>▾</Text>
-            </View>
-          </Picker>
+          <View className='category-grid'>
+            {CATEGORIES.map((cat, i) => (
+              <Text
+                key={cat}
+                className={`category-tag ${categoryIndex === i ? 'selected' : ''}`}
+                onClick={() => setCategoryIndex(i)}
+              >{cat}</Text>
+            ))}
+          </View>
         </View>
 
         {/* Price — optional */}

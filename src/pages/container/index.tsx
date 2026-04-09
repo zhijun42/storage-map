@@ -1,4 +1,4 @@
-import { View, Text, Input, Button, Image, Picker, Textarea } from '@tarojs/components'
+import { View, Text, Input, Button, Image, Textarea } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
 import { useState, useEffect, useCallback } from 'react'
 import { getSpace, updateContainer, uploadPhoto, deleteContainer } from '../../services/space'
@@ -252,9 +252,15 @@ export default function ContainerPage() {
                         </View>
                         <View className='edit-field'>
                           <Text className='edit-label'>类型</Text>
-                          <Picker mode='selector' range={CATEGORIES} value={CATEGORIES.indexOf(editValues.category || '')} onChange={(e) => { const cat = CATEGORIES[Number(e.detail.value)]; setEditValues(prev => ({ ...prev, category: cat })); handleSaveField(slotIndex, itemIndex, 'category', cat) }}>
-                            <Text className='edit-picker-text'>{editValues.category || '选择类型'}<Text className='edit-picker-arrow'> ▼</Text></Text>
-                          </Picker>
+                          <View className='category-grid'>
+                            {CATEGORIES.map(cat => (
+                              <Text
+                                key={cat}
+                                className={`category-tag ${editValues.category === cat ? 'selected' : ''}`}
+                                onClick={() => { setEditValues(prev => ({ ...prev, category: cat })); handleSaveField(slotIndex, itemIndex, 'category', cat) }}
+                              >{cat}</Text>
+                            ))}
+                          </View>
                         </View>
                         <View className='edit-field'>
                           <Text className='edit-label'>价格</Text>

@@ -208,20 +208,28 @@
         min-height: 80px;
       }
 
-      .edit-picker-text {
-        font-size: 28px;
-        color: hsl(220, 25%, 10%);
-        background: hsl(210, 12%, 96%);
-        border-radius: 8px;
-        padding: 0 16px;
-        height: 72px;
-        line-height: 72px;
-        display: block;
-      }
+      .category-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
 
-      .edit-picker-arrow {
-        font-size: 20px;
-        color: hsl(215, 10%, 60%);
+        .category-tag {
+          font-size: 24px;
+          color: hsl(215, 10%, 46%);
+          background: hsl(210, 12%, 96%);
+          padding: 10px 20px;
+          border-radius: 999px;
+          border: 1.5px solid transparent;
+
+          &.selected {
+            color: hsl(217, 91%, 55%);
+            background: hsl(217, 91%, 96%);
+            border-color: hsl(217, 91%, 60%);
+            font-weight: 600;
+          }
+
+          &:active { opacity: 0.7; }
+        }
       }
 
       .edit-value-static {
