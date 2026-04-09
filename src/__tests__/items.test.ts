@@ -79,3 +79,63 @@ describe('serializeItems', () => {
     expect(result[0].photo).toBe('')
   })
 })
+
+describe('inline edit: normalize → mutate → serialize round-trip', () => {
+  const baseItems = [
+    { name: '羽绒服', category: '衣物', price: '899', createdAt: '2026-04-09', photo: '', notes: '' },
+    { name: '风衣', category: '衣物', price: '650', createdAt: '2026-04-09', photo: '', notes: '轻薄款' },
+  ]
+
+  it('updates item name and preserves other fields', () => {
+    const items = normalizeItems(baseItems)
+    items[0] = { ...items[0], name: '加厚羽绒服' }
+    const result = serializeItems(items)
+    expect(result[0].name).toBe('加厚羽绒服')
+    expect(result[0].category).toBe('衣物')
+    expect(result[0].price).toBe('899')
+    expect(result).toHaveLength(2)
+  })
+
+  it('updates item category', () => {
+    const items = normalizeItems(baseItems)
+    items[1] = { ...items[1], category: '鞋包' }
+    const result = serializeItems(items)
+    expect(result[1].category).toBe('鞋包')
+    expect(result[1].name).toBe('风衣')
+  })
+
+  it('updates item price', () => {
+    const items = normalizeItems(baseItems)
+    items[0] = { ...items[0], price: '1299' }
+    const result = serializeItems(items)
+    expect(result[0].price).toBe('1299')
+  })
+
+  it('updates item notes', () => {
+    const items = normalizeItems(baseItems)
+    items[0] = { ...items[0], notes: '冬季必备' }
+    const result = serializeItems(items)
+    expect(result[0].notes).toBe('冬季必备')
+  })
+
+  it('updates multiple fields on same item', () => {
+    const items = normalizeItems(baseItems)
+    items[0] = { ...items[0], name: '新羽绒服', price: '1500', notes: '打折入手' }
+    const result = serializeItems(items)
+    expect(result[0].name).toBe('新羽绒服')
+    expect(result[0].price).toBe('1500')
+    expect(result[0].notes).toBe('打折入手')
+    expect(result[0].category).toBe('衣物')
+  })
+
+  it('round-trips legacy string items after edit', () => {
+    const items = normalizeItems('羽绒服、牛仔裤')
+    items[0] = { ...items[0], category: '衣物', price: '899' }
+    const result = serializeItems(items)
+    expect(result[0].name).toBe('羽绒服')
+    expect(result[0].category).toBe('衣物')
+    expect(result[0].price).toBe('899')
+    expect(result[1].name).toBe('牛仔裤')
+    expect(result[1].category).toBe('')
+  })
+})

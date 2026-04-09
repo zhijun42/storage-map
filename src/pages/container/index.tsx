@@ -1,8 +1,8 @@
-import { View, Text, Input, Button, Image } from '@tarojs/components'
+import { View, Text, Input, Button, Image, Picker, Textarea } from '@tarojs/components'
 import Taro, { useRouter, useDidShow } from '@tarojs/taro'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getSpace, updateContainer, uploadPhoto, deleteContainer } from '../../services/space'
-import { normalizeItems, serializeItems, Item } from '../../services/items'
+import { normalizeItems, serializeItems, Item, CATEGORIES } from '../../services/items'
 import IsometricView from '../../components/IsometricView'
 import './index.scss'
 
@@ -12,6 +12,8 @@ export default function ContainerPage() {
   const [container, setContainer] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
+  const [expandedItem, setExpandedItem] = useState<string | null>(null)
+  const [editValues, setEditValues] = useState<Partial<Item>>({})
   const decodedQuery = searchQuery ? decodeURIComponent(searchQuery) : ''
 
   useEffect(() => { loadContainer() }, [])
@@ -45,10 +47,30 @@ export default function ContainerPage() {
     })
   }
 
-  function handleViewItem(slotIndex: number, itemIndex: number) {
-    Taro.navigateTo({
-      url: `/pages/item-detail/index?spaceId=${spaceId}&roomId=${roomId}&containerId=${containerId}&slotIndex=${slotIndex}&itemIndex=${itemIndex}`,
-    })
+  function toggleExpandItem(slotIndex: number, itemIndex: number) {
+    const key = `${slotIndex}-${itemIndex}`
+    if (expandedItem === key) {
+      setExpandedItem(null)
+      setEditValues({})
+    } else {
+      const items = normalizeItems(container.slots[slotIndex].items)
+      setEditValues({ ...items[itemIndex] })
+      setExpandedItem(key)
+    }
+  }
+
+  function handleEditInput(field: keyof Item, value: string) {
+    setEditValues(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function handleSaveField(slotIndex: number, itemIndex: number, field: keyof Item, directValue?: string) {
+    const value = directValue !== undefined ? directValue : String(editValues[field] ?? '')
+    const updatedSlots = [...container.slots]
+    const updatedItems = normalizeItems(updatedSlots[slotIndex].items)
+    if (updatedItems[itemIndex][field] === value) return
+    updatedItems[itemIndex] = { ...updatedItems[itemIndex], [field]: value }
+    updatedSlots[slotIndex] = { ...updatedSlots[slotIndex], items: serializeItems(updatedItems) }
+    await saveSlots(updatedSlots)
   }
 
   async function handleDeleteItem(slotIndex: number, itemIndex: number) {
@@ -171,25 +193,59 @@ export default function ContainerPage() {
               <View className='item-list'>
                 {items.map((item: Item, itemIndex: number) => {
                   const isSearchMatch = decodedQuery && item.name.toLowerCase().includes(decodedQuery.toLowerCase())
+                  const itemKey = `${slotIndex}-${itemIndex}`
+                  const isExpanded = expandedItem === itemKey
                   return (
-                  <View key={itemIndex} className={`item-card ${isSearchMatch ? 'search-highlight' : ''}`}>
-                    {item.photo ? (
-                      <Image className='item-photo' src={item.photo} mode='aspectFill' onClick={() => handleItemPhoto(slotIndex, itemIndex)} />
-                    ) : (
-                      <View className='item-photo-placeholder' onClick={() => handleItemPhoto(slotIndex, itemIndex)}>
-                        <Text className='photo-icon'>📷</Text>
+                  <View key={itemIndex} className={`item-card ${isSearchMatch ? 'search-highlight' : ''} ${isExpanded ? 'expanded' : ''}`}>
+                    <View className='item-card-header' onClick={() => toggleExpandItem(slotIndex, itemIndex)}>
+                      {item.photo ? (
+                        <Image className='item-photo' src={item.photo} mode='aspectFill' onClick={(e) => { e.stopPropagation(); handleItemPhoto(slotIndex, itemIndex) }} />
+                      ) : (
+                        <View className='item-photo-placeholder' onClick={(e) => { e.stopPropagation(); handleItemPhoto(slotIndex, itemIndex) }}>
+                          <Text className='photo-icon'>📷</Text>
+                        </View>
+                      )}
+                      <View className='item-info'>
+                        <Text className='item-name'>{item.name}</Text>
+                        <View className='item-meta'>
+                          {item.category && <Text className='item-category'>{item.category}</Text>}
+                          {item.price && <Text className='item-price'>¥{item.price}</Text>}
+                        </View>
+                      </View>
+                      <Text className={`item-expand-arrow ${isExpanded ? 'rotated' : ''}`}>›</Text>
+                    </View>
+
+                    {isExpanded && (
+                      <View className='item-edit-panel'>
+                        <View className='edit-field'>
+                          <Text className='edit-label'>名称</Text>
+                          <Input className='edit-input' value={String(editValues.name ?? '')} onInput={(e) => handleEditInput('name', e.detail.value)} onBlur={() => handleSaveField(slotIndex, itemIndex, 'name')} />
+                        </View>
+                        <View className='edit-field'>
+                          <Text className='edit-label'>类型</Text>
+                          <Picker mode='selector' range={CATEGORIES} value={CATEGORIES.indexOf(editValues.category || '')} onChange={(e) => { const cat = CATEGORIES[Number(e.detail.value)]; setEditValues(prev => ({ ...prev, category: cat })); handleSaveField(slotIndex, itemIndex, 'category', cat) }}>
+                            <Text className='edit-picker-text'>{editValues.category || '选择类型'}<Text className='edit-picker-arrow'> ▼</Text></Text>
+                          </Picker>
+                        </View>
+                        <View className='edit-field'>
+                          <Text className='edit-label'>价格</Text>
+                          <Input className='edit-input' type='digit' value={String(editValues.price ?? '')} placeholder='¥' onInput={(e) => handleEditInput('price', e.detail.value)} onBlur={() => handleSaveField(slotIndex, itemIndex, 'price')} />
+                        </View>
+                        <View className='edit-field'>
+                          <Text className='edit-label'>备注</Text>
+                          <Textarea className='edit-textarea' value={String(editValues.notes ?? '')} placeholder='添加备注...' autoHeight maxlength={500} onInput={(e) => handleEditInput('notes', e.detail.value)} onBlur={() => handleSaveField(slotIndex, itemIndex, 'notes')} />
+                        </View>
+                        {item.createdAt && (
+                          <View className='edit-field'>
+                            <Text className='edit-label'>录入日期</Text>
+                            <Text className='edit-value-static'>{item.createdAt}</Text>
+                          </View>
+                        )}
+                        <View className='edit-actions'>
+                          <Text className='edit-delete-btn' onClick={() => handleDeleteItem(slotIndex, itemIndex)}>删除物品</Text>
+                        </View>
                       </View>
                     )}
-                    <View className='item-info'>
-                      <Text className='item-name' onClick={() => handleViewItem(slotIndex, itemIndex)}>{item.name}</Text>
-                      <View className='item-meta'>
-                        {item.category && <Text className='item-category'>{item.category}</Text>}
-                        {item.price && <Text className='item-price'>¥{item.price}</Text>}
-                      </View>
-                      {item.createdAt && <Text className='item-date'>{item.createdAt}</Text>}
-                      {item.notes && <Text className='item-notes'>{item.notes}</Text>}
-                    </View>
-                    <Text className='item-delete' onClick={() => handleDeleteItem(slotIndex, itemIndex)}>×</Text>
                   </View>
                   )})}
               </View>

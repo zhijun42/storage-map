@@ -206,3 +206,110 @@ describe('getSpaces metadata', () => {
     expect(spaces[0].containerCount).toBe(2)
   })
 })
+
+describe('inline item editing via updateContainer', () => {
+  let spaceId: string
+  let roomId: string
+  let containerId: string
+
+  const initialSlots = [
+    {
+      label: '衣物', type: 'shelf', photo: '',
+      items: [
+        { name: '羽绒服', category: '衣物', price: '899', createdAt: '2026-04-09', photo: '', notes: '' },
+        { name: '风衣', category: '衣物', price: '650', createdAt: '2026-04-09', photo: '', notes: '轻薄款' },
+      ],
+    },
+    {
+      label: '鞋包', type: 'shelf', photo: '',
+      items: [
+        { name: '运动鞋', category: '鞋包', price: '799', createdAt: '2026-04-09', photo: '', notes: '' },
+      ],
+    },
+  ]
+
+  beforeEach(async () => {
+    const space = await createSpace('我的家')
+    spaceId = space._id
+    const room = await addRoom(spaceId, '主卧')
+    roomId = room!._id
+    const container = await addContainer(spaceId, roomId, { name: '衣柜', type: 'wardrobe', slots: initialSlots })
+    containerId = container!._id
+  })
+
+  it('updates a single item name and persists', async () => {
+    const space = await getSpace(spaceId)
+    const slots = [...space.rooms[0].containers[0].slots]
+    const items = [...slots[0].items]
+    items[0] = { ...items[0], name: '加厚羽绒服' }
+    slots[0] = { ...slots[0], items }
+    await updateContainer(spaceId, roomId, containerId, { slots })
+
+    const updated = await getSpace(spaceId)
+    expect(updated.rooms[0].containers[0].slots[0].items[0].name).toBe('加厚羽绒服')
+    expect(updated.rooms[0].containers[0].slots[0].items[1].name).toBe('风衣')
+  })
+
+  it('updates item category via picker', async () => {
+    const space = await getSpace(spaceId)
+    const slots = [...space.rooms[0].containers[0].slots]
+    const items = [...slots[0].items]
+    items[0] = { ...items[0], category: '出行' }
+    slots[0] = { ...slots[0], items }
+    await updateContainer(spaceId, roomId, containerId, { slots })
+
+    const updated = await getSpace(spaceId)
+    expect(updated.rooms[0].containers[0].slots[0].items[0].category).toBe('出行')
+    expect(updated.rooms[0].containers[0].slots[0].items[0].price).toBe('899')
+  })
+
+  it('updates item price and notes together', async () => {
+    const space = await getSpace(spaceId)
+    const slots = [...space.rooms[0].containers[0].slots]
+    const items = [...slots[0].items]
+    items[1] = { ...items[1], price: '800', notes: '秋冬两用' }
+    slots[0] = { ...slots[0], items }
+    await updateContainer(spaceId, roomId, containerId, { slots })
+
+    const updated = await getSpace(spaceId)
+    const item = updated.rooms[0].containers[0].slots[0].items[1]
+    expect(item.price).toBe('800')
+    expect(item.notes).toBe('秋冬两用')
+    expect(item.name).toBe('风衣')
+  })
+
+  it('edits item in one slot without affecting another slot', async () => {
+    const space = await getSpace(spaceId)
+    const slots = [...space.rooms[0].containers[0].slots]
+    const items0 = [...slots[0].items]
+    items0[0] = { ...items0[0], notes: '已修改' }
+    slots[0] = { ...slots[0], items: items0 }
+    await updateContainer(spaceId, roomId, containerId, { slots })
+
+    const updated = await getSpace(spaceId)
+    expect(updated.rooms[0].containers[0].slots[0].items[0].notes).toBe('已修改')
+    expect(updated.rooms[0].containers[0].slots[1].items[0].name).toBe('运动鞋')
+    expect(updated.rooms[0].containers[0].slots[1].items[0].notes).toBe('')
+  })
+
+  it('persists edits across multiple sequential updates', async () => {
+    const space1 = await getSpace(spaceId)
+    const slots1 = [...space1.rooms[0].containers[0].slots]
+    const items1 = [...slots1[0].items]
+    items1[0] = { ...items1[0], name: '白鹅绒羽绒服' }
+    slots1[0] = { ...slots1[0], items: items1 }
+    await updateContainer(spaceId, roomId, containerId, { slots: slots1 })
+
+    const space2 = await getSpace(spaceId)
+    const slots2 = [...space2.rooms[0].containers[0].slots]
+    const items2 = [...slots2[0].items]
+    items2[0] = { ...items2[0], price: '1299' }
+    slots2[0] = { ...slots2[0], items: items2 }
+    await updateContainer(spaceId, roomId, containerId, { slots: slots2 })
+
+    const final = await getSpace(spaceId)
+    const item = final.rooms[0].containers[0].slots[0].items[0]
+    expect(item.name).toBe('白鹅绒羽绒服')
+    expect(item.price).toBe('1299')
+  })
+})
