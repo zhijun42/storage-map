@@ -17,14 +17,20 @@ const db = cloud.database()
 const _ = db.command
 
 async function checkPermission(openId, spaceId) {
+  console.log(`[perm] checking openId=${openId}, spaceId=${spaceId}`)
   const space = await db.collection('spaces').doc(spaceId).get().catch(() => null)
-  if (!space?.data) return null
+  if (!space?.data) {
+    console.log(`[perm] space not found`)
+    return null
+  }
 
+  console.log(`[perm] space._openid=${space.data._openid}, match=${space.data._openid === openId}`)
   if (space.data._openid === openId) return 'owner'
 
   const share = await db.collection('shares')
     .where({ spaceId, claimedBy: openId })
     .limit(1).get()
+  console.log(`[perm] shares found=${share.data.length}`, share.data.length > 0 ? `claimedBy=${share.data[0].claimedBy}` : '')
   if (share.data.length > 0) return share.data[0].permission || 'editor'
 
   return null

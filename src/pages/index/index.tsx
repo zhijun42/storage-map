@@ -21,7 +21,12 @@ export default function Index() {
   useEffect(() => {
     // Hackathon: always show onboarding (remove flag on launch)
     Taro.removeStorageSync('onboarding_done')
-    Taro.navigateTo({ url: '/pages/onboarding/index' })
+    setTimeout(() => {
+      Taro.navigateTo({
+        url: '/pages/onboarding/index',
+        fail: (err) => console.error('[Onboarding] navigateTo failed:', err),
+      })
+    }, 300)
 
     const shareToken = router.params.shareToken
     if (shareToken) handleShareToken(shareToken)
