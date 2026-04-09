@@ -48,6 +48,7 @@ export default function AIStrategyPage() {
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
   const [stats, setStats] = useState<Stats | null>(null)
+  const [modelName, setModelName] = useState('')
 
   async function handleGenerate() {
     setLoading(true)
@@ -82,6 +83,7 @@ export default function AIStrategyPage() {
       })
 
       const payload = res.result as any
+      if (payload?.model) setModelName(payload.model)
       if (payload?.success) {
         setResult(payload.content)
       } else {
@@ -89,7 +91,8 @@ export default function AIStrategyPage() {
       }
     } catch (e: any) {
       console.error('AI strategy error:', e)
-      setError('请求失败: ' + (e.message || '网络错误'))
+      const errMsg = e.message || '网络错误'
+      setError(errMsg)
     }
 
     setLoading(false)
@@ -163,6 +166,7 @@ export default function AIStrategyPage() {
         <View className='result'>
           <View className='result-header'>
             <Text className='result-title'>收纳策略报告</Text>
+            {modelName ? <Text className='model-tag'>Powered by {modelName}</Text> : null}
           </View>
           <View className='result-body'>
             <RichText nodes={md2html(result)} />

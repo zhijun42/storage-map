@@ -3,26 +3,27 @@ const https = require('https')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
-const DEEPSEEK_API_KEY = 'sk-f6ad1cadc6c545b0bedcdfc021c0f391'
-const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
+const API_KEY = 'sk-u4RwSO07PsQSDb5L0qX5iUvnOFKnKujrC96soYasasTyBwl9'
+const API_URL = 'https://api.moonshot.cn/v1/chat/completions'
+const MODEL = 'kimi-k2.5'
 
-function callDeepSeek(prompt) {
+function callLLM(prompt) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      model: 'deepseek-chat',
+      model: MODEL,
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 2000,
-      temperature: 0.7,
+      temperature: 1,
     })
 
-    const url = new URL(DEEPSEEK_URL)
+    const url = new URL(API_URL)
     const options = {
       hostname: url.hostname,
       path: url.pathname,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${API_KEY}`,
         'Content-Length': Buffer.byteLength(body),
       },
     }
@@ -36,16 +37,16 @@ function callDeepSeek(prompt) {
           if (json.choices && json.choices[0]) {
             resolve(json.choices[0].message.content)
           } else {
-            reject(new Error('Unexpected API response: ' + data.slice(0, 200)))
+            reject(new Error(`[${MODEL}] Unexpected API response: ` + data.slice(0, 200)))
           }
         } catch (e) {
-          reject(new Error('Parse error: ' + e.message))
+          reject(new Error(`[${MODEL}] Parse error: ` + e.message))
         }
       })
     })
 
     req.on('error', reject)
-    req.setTimeout(30000, () => { req.destroy(); reject(new Error('Request timeout')) })
+    req.setTimeout(55000, () => { req.destroy(); reject(new Error(`[${MODEL}] Request timeout (55s)`)) })
     req.write(body)
     req.end()
   })
@@ -57,11 +58,13 @@ exports.main = async (event) => {
   const prompt = buildPrompt(spaceData, profileData)
 
   try {
-    const result = await callDeepSeek(prompt)
-    return { success: true, content: result }
+    console.log(`[ai-strategy] Calling ${MODEL} via ${API_URL}`)
+    const result = await callLLM(prompt)
+    console.log(`[ai-strategy] ${MODEL} responded, length: ${result.length} chars`)
+    return { success: true, content: result, model: MODEL }
   } catch (err) {
-    console.error('DeepSeek API error:', err)
-    return { success: false, error: err.message || 'AI服务暂时不可用' }
+    console.error(`[ai-strategy] ${MODEL} API error:`, err)
+    return { success: false, error: err.message || 'AI服务暂时不可用', model: MODEL }
   }
 }
 
