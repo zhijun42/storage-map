@@ -189,9 +189,9 @@ export default function IsometricFloorplanView({ rooms, spaceId, highlightContai
       })
     })
 
-    // Rooms — collect all wall segments, deduplicate shared walls
-    const wallSet = new Set<string>()
-    const wallSegments: { px: number; pz: number; sx: number; sz: number }[] = []
+    // Rooms — collect wall segments and merge overlapping ones
+    const wallT = 0.05
+    const rawWalls: { isH: boolean; fixedCoord: number; rangeStart: number; rangeEnd: number }[] = []
 
     floorplan.rooms.forEach((room: any) => {
       const xs = room.walls.map((w: any) => Math.min(w.x1, w.x2))
@@ -204,23 +204,41 @@ export default function IsometricFloorplanView({ rooms, spaceId, highlightContai
       minX = Math.min(minX, rx); minZ = Math.min(minZ, rz)
       maxX = Math.max(maxX, rx + rw); maxZ = Math.max(maxZ, rz + rd)
 
-      // Floor
-      // Room floor removed — ground plane provides the base
+      rawWalls.push(
+        { isH: true, fixedCoord: rz, rangeStart: rx - wallT / 2, rangeEnd: rx + rw + wallT / 2 },
+        { isH: true, fixedCoord: rz + rd, rangeStart: rx - wallT / 2, rangeEnd: rx + rw + wallT / 2 },
+        { isH: false, fixedCoord: rx, rangeStart: rz, rangeEnd: rz + rd },
+        { isH: false, fixedCoord: rx + rw, rangeStart: rz, rangeEnd: rz + rd },
+      )
+    })
 
-      // Collect walls with dedup key (rounded position)
-      const wallT = 0.05
-      const sides = [
-        { px: rx + rw / 2, pz: rz, sx: rw + wallT, sz: wallT },
-        { px: rx + rw / 2, pz: rz + rd, sx: rw + wallT, sz: wallT },
-        { px: rx, pz: rz + rd / 2, sx: wallT, sz: rd },
-        { px: rx + rw, pz: rz + rd / 2, sx: wallT, sz: rd },
-      ]
-      sides.forEach(w => {
-        // Round to 3 decimals for dedup key
-        const key = `${w.px.toFixed(3)}_${w.pz.toFixed(3)}_${w.sx.toFixed(3)}_${w.sz.toFixed(3)}`
-        if (!wallSet.has(key)) {
-          wallSet.add(key)
-          wallSegments.push(w)
+    // Group walls by (orientation, fixedCoord) and merge overlapping intervals
+    const wallGroups = new Map<string, { isH: boolean; fixedCoord: number; intervals: [number, number][] }>()
+    rawWalls.forEach(w => {
+      const key = `${w.isH ? 'H' : 'V'}_${w.fixedCoord.toFixed(3)}`
+      if (!wallGroups.has(key)) wallGroups.set(key, { isH: w.isH, fixedCoord: w.fixedCoord, intervals: [] })
+      wallGroups.get(key)!.intervals.push([w.rangeStart, w.rangeEnd])
+    })
+
+    const wallSegments: { px: number; pz: number; sx: number; sz: number }[] = []
+    wallGroups.forEach(group => {
+      const sorted = group.intervals.sort((a, b) => a[0] - b[0])
+      const merged: [number, number][] = [[sorted[0][0], sorted[0][1]]]
+      for (let i = 1; i < sorted.length; i++) {
+        const last = merged[merged.length - 1]
+        if (sorted[i][0] <= last[1] + 0.01) {
+          last[1] = Math.max(last[1], sorted[i][1])
+        } else {
+          merged.push([sorted[i][0], sorted[i][1]])
+        }
+      }
+      merged.forEach(([start, end]) => {
+        const len = end - start
+        const center = (start + end) / 2
+        if (group.isH) {
+          wallSegments.push({ px: center, pz: group.fixedCoord, sx: len, sz: wallT })
+        } else {
+          wallSegments.push({ px: group.fixedCoord, pz: center, sx: wallT, sz: len })
         }
       })
     })
@@ -236,7 +254,6 @@ export default function IsometricFloorplanView({ rooms, spaceId, highlightContai
     const wallH = ROOM_WALL_H * MM_TO_M
     const DOOR_H = 2.1 // meters
     const WIN_BOTTOM = 1.0; const WIN_H = 1.0
-    const wallT = 0.05
     const wallMat = new THREE.MeshLambertMaterial({ color: 0xc8ccd0, transparent: true, opacity: 0.25 })
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x8a9099 })
     const glassMat = new THREE.MeshLambertMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.25 })
@@ -255,10 +272,7 @@ export default function IsometricFloorplanView({ rooms, spaceId, highlightContai
     }
 
     wallSegments.forEach(w => {
-      // Find door/windows on this wall segment (matching by coordinate proximity)
-      const isH = w.sz < w.sx // horizontal wall
-      const wallCoordMM = isH ? w.pz / MM_TO_M : w.px / MM_TO_M
-      // Match doors/windows to this wall segment by coordinate + direction
+      const isH = w.sz < w.sx
       const wallFixedCoord = isH ? w.pz : w.px
       const wallRangeStart = isH ? w.px - w.sx / 2 : w.pz - w.sz / 2
       const wallRangeEnd = isH ? w.px + w.sx / 2 : w.pz + w.sz / 2
