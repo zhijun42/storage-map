@@ -147,9 +147,20 @@ export async function addContainer(spaceId: string, roomId: string, container: a
   if (!space) return null
   const room = space.rooms.find((r: any) => r._id === roomId)
   if (!room) return null
+
+  // Auto-deduplicate name within the same room
+  let name = container.name || '容器'
+  const existingNames = new Set((room.containers || []).map((c: any) => c.name))
+  if (existingNames.has(name)) {
+    let i = 2
+    while (existingNames.has(`${name}${i}`)) i++
+    name = `${name}${i}`
+  }
+
   const newContainer = {
     _id: generateId(),
     ...container,
+    name,
     slots: container.slots || [{ label: '第1层', type: 'shelf', items: '', photo: '' }],
     children: [],
     createdAt: new Date().toISOString(),

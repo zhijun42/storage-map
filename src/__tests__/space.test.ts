@@ -155,6 +155,23 @@ describe('Container CRUD', () => {
     const space = await getSpace(spaceId)
     expect(space.rooms[0].containers).toHaveLength(0)
   })
+
+  it('auto-deduplicates container name within same room', async () => {
+    const c1 = await addContainer(spaceId, roomId, { name: '衣柜' })
+    const c2 = await addContainer(spaceId, roomId, { name: '衣柜' })
+    const c3 = await addContainer(spaceId, roomId, { name: '衣柜' })
+    expect(c1!.name).toBe('衣柜')
+    expect(c2!.name).toBe('衣柜2')
+    expect(c3!.name).toBe('衣柜3')
+  })
+
+  it('allows same name in different rooms', async () => {
+    const room2 = await addRoom(spaceId, '客厅')
+    const c1 = await addContainer(spaceId, roomId, { name: '书架' })
+    const c2 = await addContainer(spaceId, room2!._id, { name: '书架' })
+    expect(c1!.name).toBe('书架')
+    expect(c2!.name).toBe('书架')
+  })
 })
 
 describe('searchItems', () => {
