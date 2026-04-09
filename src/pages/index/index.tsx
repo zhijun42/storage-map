@@ -143,6 +143,7 @@ export default function Index() {
     }
   }
 
+  console.log(`[index] render: showOnboarding=${showOnboarding} spaces=${spaces.length}`)
   if (showOnboarding) {
     return (
       <View className='index-page onboarding'>
