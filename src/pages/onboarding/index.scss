@@ -1,0 +1,121 @@
+.onboarding-page {
+  padding: 80px 40px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, hsl(217, 91%, 97%) 0%, #fff 50%);
+
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+
+    .title {
+      font-size: 48px;
+      font-weight: 800;
+      color: hsl(220, 25%, 10%);
+      display: block;
+    }
+
+    .subtitle {
+      font-size: 28px;
+      color: hsl(215, 10%, 46%);
+      display: block;
+      margin-top: 16px;
+    }
+  }
+
+  .role-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .role-card {
+    padding: 40px 32px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    text-align: center;
+
+    &:active { transform: scale(0.98); }
+
+    &.organizer {
+      border: 2px solid hsl(217, 91%, 85%);
+    }
+
+    &.resident {
+      border: 2px solid hsl(142, 71%, 80%);
+    }
+
+    .role-icon {
+      display: inline-block;
+      width: 80px;
+      height: 80px;
+      line-height: 80px;
+      border-radius: 50%;
+      background: hsl(210, 12%, 96%);
+      font-size: 36px;
+      font-weight: 700;
+      color: hsl(215, 10%, 46%);
+      margin-bottom: 16px;
+    }
+
+    .role-title {
+      font-size: 34px;
+      font-weight: 700;
+      color: hsl(220, 25%, 10%);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .role-desc {
+      font-size: 26px;
+      color: hsl(215, 10%, 46%);
+      display: block;
+    }
+  }
+
+  .code-section {
+    text-align: center;
+
+    .code-label {
+      font-size: 28px;
+      color: hsl(220, 25%, 10%);
+      display: block;
+      margin-bottom: 24px;
+    }
+
+    .code-input {
+      width: 100%;
+      font-size: 36px;
+      text-align: center;
+      letter-spacing: 8px;
+      background: #fff;
+      border: 2px solid hsl(210, 12%, 88%);
+      border-radius: 16px;
+      padding: 24px;
+      box-sizing: border-box;
+      margin-bottom: 32px;
+    }
+
+    .submit-btn {
+      padding: 28px;
+      background: hsl(142, 71%, 45%);
+      border-radius: 999px;
+      margin-bottom: 24px;
+
+      &:active { opacity: 0.9; }
+      &.disabled { opacity: 0.5; pointer-events: none; }
+
+      .submit-text {
+        font-size: 30px;
+        font-weight: 600;
+        color: #fff;
+      }
+    }
+
+    .back-link {
+      font-size: 26px;
+      color: hsl(217, 91%, 60%);
+      display: block;
+    }
+  }
+}

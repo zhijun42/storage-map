@@ -1,7 +1,7 @@
 import { View, Text, Button } from '@tarojs/components'
 import Taro, { useRouter, useShareAppMessage, useDidShow } from '@tarojs/taro'
 import { useState, useEffect } from 'react'
-import { getSpace, addRoom, addContainer, deleteRoom, createShareLink } from '../../services/space'
+import { getSpace, addRoom, addContainer, deleteRoom, createShareLink, getShareStatus, revokeShare } from '../../services/space'
 import { normalizeItems } from '../../services/items'
 import './index.scss'
 
@@ -10,13 +10,16 @@ export default function SpacePage() {
   const spaceId = router.params.id || ''
   const [space, setSpace] = useState<any>(null)
   const [activeRoom, setActiveRoom] = useState<string>('')
+  const [shareStatus, setShareStatus] = useState<any>(null)
 
   useEffect(() => { loadSpace() }, [])
   useDidShow(() => { loadSpace() })
 
   useShareAppMessage(() => ({
     title: space ? `${space.name} - 收纳地图` : '收纳地图',
-    path: `/pages/space/index?id=${spaceId}`,
+    path: shareStatus?.token
+      ? `/pages/index/index?shareToken=${shareStatus.token}`
+      : `/pages/space/index?id=${spaceId}`,
   }))
 
   async function loadSpace() {
@@ -25,6 +28,14 @@ export default function SpacePage() {
     if (data?.rooms?.length > 0 && !activeRoom) {
       setActiveRoom(data.rooms[0]._id)
     }
+    loadShareStatus()
+  }
+
+  async function loadShareStatus() {
+    try {
+      const status = await getShareStatus(spaceId)
+      setShareStatus(status)
+    } catch {}
   }
 
   async function handleAddRoom() {
@@ -76,15 +87,34 @@ export default function SpacePage() {
   }
 
   async function handleShare() {
+    if (shareStatus?.shared) {
+      const res = await Taro.showModal({
+        title: '分享管理',
+        content: shareStatus.claimedBy
+          ? `已有住户绑定此空间。\n\n分享码：${shareStatus.token}\n\n是否撤销分享？`
+          : `分享码：${shareStatus.token}\n\n等待住户扫码绑定中...\n\n是否撤销分享？`,
+        confirmText: '撤销',
+        confirmColor: '#e53e3e',
+        cancelText: '关闭',
+      })
+      if (res.confirm) {
+        await revokeShare(spaceId)
+        Taro.showToast({ title: '已撤销', icon: 'success' })
+        setShareStatus({ success: true, shared: false })
+      }
+      return
+    }
+
     Taro.showLoading({ title: '生成分享...' })
     try {
       const token = await createShareLink(spaceId)
       Taro.hideLoading()
       Taro.showModal({
         title: '分享成功',
-        content: `分享码：${token}\n\n也可以点击右上角菜单发送给好友`,
+        content: `分享码：${token}\n\n将此码发送给住户，住户首次打开后自动绑定，其他人无法使用。\n\n也可以点击右上角菜单发送给好友。`,
         showCancel: false,
       })
+      loadShareStatus()
     } catch (e) {
       Taro.hideLoading()
       Taro.showToast({ title: '分享失败', icon: 'none' })
@@ -105,7 +135,9 @@ export default function SpacePage() {
     <View className='space-page'>
       <View className='page-header'>
         <Text className='page-title'>{space.name}</Text>
-        <Text className='share-btn' onClick={handleShare}>分享</Text>
+        <Text className='share-btn' onClick={handleShare}>
+          {shareStatus?.shared ? (shareStatus.claimedBy ? '已分享' : '待绑定') : '分享给住户'}
+        </Text>
       </View>
 
       {/* Room Tabs */}

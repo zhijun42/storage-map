@@ -95,9 +95,10 @@ function makeItem(i: { name: string; category: string; price: string }): Item {
 }
 
 export async function initExampleSpace() {
-  // Delete existing spaces
+  // Only delete the demo space, preserve user-created spaces
   const existing = await getSpaces()
-  for (const s of existing) await deleteSpace(s._id)
+  const demoSpace = existing.find((s: any) => s.name === '示例之家')
+  if (demoSpace) await deleteSpace(demoSpace._id)
 
   // Create space + rooms
   const space = await createSpace('示例之家')

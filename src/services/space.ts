@@ -352,3 +352,17 @@ export async function resolveShareLink(token: string) {
   }
   return { success: true, spaceId: token.replace('mock_', ''), permission: 'editor' }
 }
+
+export async function revokeShare(spaceId: string) {
+  if (useCloud()) {
+    return cloudService.cloudRevokeShare(spaceId)
+  }
+  return { success: true, removed: 0 }
+}
+
+export async function getShareStatus(spaceId: string) {
+  if (useCloud()) {
+    return cloudService.cloudGetShareStatus(spaceId)
+  }
+  return { success: true, shared: false }
+}

@@ -13,6 +13,7 @@ export default defineAppConfig({
     'pages/add-item/index',
     'pages/item-detail/index',
     'pages/move-item/index',
+    'pages/onboarding/index',
   ],
   tabBar: {
     color: '#69727d',

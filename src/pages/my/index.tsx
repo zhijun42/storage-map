@@ -1,13 +1,14 @@
 import { View, Text, Button } from '@tarojs/components'
 import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
-import { createShareLink, getSpaces, deleteSpace } from '../../services/space'
+import { getSpaces, deleteSpace } from '../../services/space'
 import { cloudClearAll } from '../../services/cloud'
 import { initExampleSpace } from '../../services/init-space'
 import './index.scss'
 
 export default function MyPage() {
   const [profileSummary, setProfileSummary] = useState('')
+  const [userRole, setUserRole] = useState<'organizer' | 'resident'>('organizer')
 
   useDidShow(() => {
     try {
@@ -18,30 +19,16 @@ export default function MyPage() {
         setProfileSummary(parts.length > 0 ? parts.join(' · ') : '')
       }
     } catch {}
+    const role = Taro.getStorageSync('user_role') || 'organizer'
+    setUserRole(role as any)
   })
-  async function handleShare() {
-    Taro.showLoading({ title: '生成分享...' })
-    try {
-      // Share the first space for now
-      const spaces = await (await import('../../services/space')).getSpaces()
-      if (spaces.length === 0) {
-        Taro.hideLoading()
-        Taro.showToast({ title: '暂无可分享的空间', icon: 'none' })
-        return
-      }
-      const token = await createShareLink(spaces[0]._id)
-      Taro.hideLoading()
-      Taro.showModal({
-        title: '分享成功',
-        content: `分享码：${token}\n\n也可以点击右上角菜单发送给好友`,
-        showCancel: false,
-      })
-    } catch {
-      Taro.hideLoading()
-      Taro.showToast({ title: '分享失败', icon: 'none' })
-    }
-  }
 
+  async function handleSwitchRole() {
+    const newRole = userRole === 'organizer' ? 'resident' : 'organizer'
+    Taro.setStorageSync('user_role', newRole)
+    setUserRole(newRole)
+    Taro.showToast({ title: `已切换为${newRole === 'organizer' ? '收纳师' : '住户'}`, icon: 'success' })
+  }
   async function handleClearAll() {
     const confirm = await Taro.showModal({
       title: '清空所有数据',
@@ -57,6 +44,8 @@ export default function MyPage() {
       Taro.removeStorageSync('rect_container_map')
       Taro.removeStorageSync('user_profile')
       Taro.removeStorageSync('mock_data_seeded_v6')
+      Taro.removeStorageSync('onboarding_done')
+      Taro.removeStorageSync('user_role')
       // Clear cloud DB (all collections)
       try { await cloudClearAll() } catch {}
       Taro.hideLoading()
@@ -108,10 +97,10 @@ export default function MyPage() {
 
   const menuItems = [
     { label: '个人信息', action: handleProfile },
+    { label: `切换身份（当前：${userRole === 'organizer' ? '收纳师' : '住户'}）`, action: handleSwitchRole },
     { label: '初始化空间（开发用）', action: handleInitSpace },
     { label: '清空所有数据（开发用）', action: handleClearAll },
     { label: '联系收纳师', action: handleContact },
-    { label: '分享物品地图', action: handleShare },
     { label: '关于我们', action: handleAbout },
   ]
 
@@ -120,11 +109,12 @@ export default function MyPage() {
       {/* Profile card */}
       <View className='profile-card'>
         <View className='avatar'>
-          <Text className='avatar-text'>张</Text>
+          <Text className='avatar-text'>{userRole === 'organizer' ? '师' : '户'}</Text>
         </View>
         <View className='profile-info'>
           <Text className='profile-name'>冬宝</Text>
-          <Text className='profile-detail'>{profileSummary || '收纳地图用户'}</Text>
+          <Text className='profile-role'>{userRole === 'organizer' ? '收纳师' : '住户'}</Text>
+          {profileSummary && <Text className='profile-detail'>{profileSummary}</Text>}
         </View>
       </View>
 

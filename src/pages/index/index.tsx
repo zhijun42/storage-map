@@ -1,25 +1,66 @@
 import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
-import { useState } from 'react'
-import { getSpaces, getSpace } from '../../services/space'
+import Taro, { useDidShow, useRouter } from '@tarojs/taro'
+import { useState, useEffect } from 'react'
+import { getSpaces, getSpace, createSpace, createShareLink, resolveShareLink, pullFromCloudIfEmpty } from '../../services/space'
 import FloorplanView from '../../components/FloorplanView'
 import IsometricFloorplanView from '../../components/IsometricFloorplanView'
 import './index.scss'
 
 export default function Index() {
+  const router = useRouter()
   const [spaces, setSpaces] = useState<any[]>([])
   const [activeSpace, setActiveSpace] = useState<any>(null)
+  const [activeSpaceIndex, setActiveSpaceIndex] = useState(0)
+  const [userRole, setUserRole] = useState<'organizer' | 'resident'>('organizer')
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
   const [has3D, setHas3D] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
 
-  useDidShow(() => { setHighlightId(null); setHas3D(false); setViewMode('2d'); loadSpaces() })
+  useEffect(() => {
+    const shareToken = router.params.shareToken
+    if (shareToken) handleShareToken(shareToken)
+  }, [])
+
+  useDidShow(() => {
+    const role = Taro.getStorageSync('user_role') || 'organizer'
+    setUserRole(role as any)
+    loadSpaces()
+  })
+
+  async function handleShareToken(token: string) {
+    Taro.showLoading({ title: '加载共享空间...' })
+    try {
+      const result = await resolveShareLink(token)
+      Taro.hideLoading()
+      if (!result.success) {
+        Taro.showModal({ title: '分享失败', content: result.error || '无法打开', showCancel: false })
+        return
+      }
+      Taro.setStorageSync('user_role', 'resident')
+      setUserRole('resident')
+      await pullFromCloudIfEmpty()
+      Taro.showToast({ title: '已加入空间', icon: 'success' })
+      loadSpaces()
+    } catch {
+      Taro.hideLoading()
+      Taro.showToast({ title: '加载失败', icon: 'none' })
+    }
+  }
 
   async function loadSpaces() {
     const data = await getSpaces()
     setSpaces(data)
     if (data.length > 0) {
-      const full = await getSpace(data[0]._id)
+      const idx = Math.min(activeSpaceIndex, data.length - 1)
+      const full = await getSpace(data[idx]._id)
+      setActiveSpace(full)
+    }
+  }
+
+  async function switchSpace(index: number) {
+    setActiveSpaceIndex(index)
+    if (spaces[index]) {
+      const full = await getSpace(spaces[index]._id)
       setActiveSpace(full)
     }
   }
@@ -34,24 +75,69 @@ export default function Index() {
     }, 300)
   }
 
+  const isOrganizer = userRole === 'organizer'
+
+  async function handleAddSpace() {
+    const res = await Taro.showModal({
+      title: '添加空间',
+      editable: true,
+      placeholderText: '空间名称（如：张先生的家）',
+    } as any)
+    if (res.confirm && (res as any).content) {
+      await createSpace((res as any).content)
+      const data = await getSpaces()
+      setSpaces(data)
+      switchSpace(data.length - 1)
+    }
+  }
+
   return (
     <View className='index-page'>
-      {/* Editor entry */}
-      <View className='editor-section'>
-        <View
-          className='editor-card-full'
-          onClick={() => Taro.navigateTo({
-            url: '/pages/draw-editor/index',
-            fail: (err) => {
-              console.error('navigateTo draw-editor failed:', err)
-              Taro.showToast({ title: '打开失败，请重试', icon: 'none' })
-            },
-          })}
-        >
-          <Text className='card-title'>空间绘制</Text>
-          <Text className='card-desc'>房间 → 家具 → 储物柜 → 立面隔间</Text>
+      {/* Space switcher — organizer */}
+      {isOrganizer && (
+        <View className='space-switcher'>
+          {spaces.map((s, i) => (
+            <View
+              key={s._id}
+              className={`space-tab ${i === activeSpaceIndex ? 'active' : ''}`}
+              onClick={() => switchSpace(i)}
+            >
+              <Text className='space-tab-text'>{s.name}</Text>
+            </View>
+          ))}
+          <View className='space-tab add-tab' onClick={handleAddSpace}>
+            <Text className='space-tab-text'>+ 添加</Text>
+          </View>
         </View>
-      </View>
+      )}
+
+      {/* Space name header */}
+      {activeSpace && (
+        <View className='space-header'>
+          <Text className='space-name'>{activeSpace.name}</Text>
+          {isOrganizer && <Text className='space-role-tag'>收纳师</Text>}
+          {!isOrganizer && <Text className='space-role-tag resident'>住户</Text>}
+        </View>
+      )}
+
+      {/* Editor entry — organizer only */}
+      {isOrganizer && (
+        <View className='editor-section'>
+          <View
+            className='editor-card-full'
+            onClick={() => Taro.navigateTo({
+              url: '/pages/draw-editor/index',
+              fail: (err) => {
+                console.error('navigateTo draw-editor failed:', err)
+                Taro.showToast({ title: '打开失败，请重试', icon: 'none' })
+              },
+            })}
+          >
+            <Text className='card-title'>空间绘制</Text>
+            <Text className='card-desc'>房间 → 家具 → 储物柜 → 立面隔间</Text>
+          </View>
+        </View>
+      )}
 
       {activeSpace && activeSpace.rooms?.length > 0 && (
         <View className='floorplan-section'>
@@ -99,6 +185,27 @@ export default function Index() {
           <Text className='action-text-ai'>AI 收纳策略</Text>
         </View>
       </View>
+
+      {isOrganizer && activeSpace && (
+        <View className='share-btn' onClick={async () => {
+          Taro.showLoading({ title: '生成分享码...' })
+          try {
+            const token = await createShareLink(activeSpace._id)
+            Taro.hideLoading()
+            Taro.setClipboardData({ data: token })
+            Taro.showModal({
+              title: '分享码已复制',
+              content: `分享码：${token}\n\n已复制到剪贴板，请发送给住户。\n住户打开小程序后输入此码即可加入空间。`,
+              showCancel: false,
+            })
+          } catch {
+            Taro.hideLoading()
+            Taro.showToast({ title: '生成失败', icon: 'none' })
+          }
+        }}>
+          <Text className='share-btn-text'>分享给住户</Text>
+        </View>
+      )}
     </View>
   )
 }

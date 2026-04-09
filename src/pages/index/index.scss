@@ -2,6 +2,66 @@
   padding: 24px 32px;
   padding-bottom: 32px;
 
+  .space-switcher {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    white-space: nowrap;
+
+    .space-tab {
+      padding: 12px 24px;
+      background: hsl(210, 12%, 96%);
+      border-radius: 999px;
+      flex-shrink: 0;
+
+      &.active {
+        background: hsl(217, 91%, 60%);
+        .space-tab-text { color: #fff; }
+      }
+
+      &:active { opacity: 0.8; }
+
+      &.add-tab {
+        border: 1.5px dashed hsl(217, 91%, 60%);
+        background: transparent;
+      }
+
+      .space-tab-text {
+        font-size: 26px;
+        font-weight: 500;
+        color: hsl(215, 10%, 46%);
+      }
+    }
+  }
+
+  .space-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+
+    .space-name {
+      font-size: 34px;
+      font-weight: 700;
+      color: hsl(220, 25%, 10%);
+    }
+
+    .space-role-tag {
+      font-size: 22px;
+      color: hsl(217, 91%, 55%);
+      background: hsl(217, 91%, 96%);
+      padding: 4px 14px;
+      border-radius: 6px;
+      font-weight: 500;
+
+      &.resident {
+        color: hsl(142, 71%, 35%);
+        background: hsl(142, 71%, 95%);
+      }
+    }
+  }
+
   .editor-section {
     margin-bottom: 24px;
 
@@ -110,6 +170,22 @@
         font-weight: 500;
         color: #fff;
       }
+    }
+  }
+
+  .share-btn {
+    margin-top: 24px;
+    padding: 28px;
+    background: hsl(142, 71%, 45%);
+    border-radius: 999px;
+    text-align: center;
+
+    &:active { opacity: 0.9; }
+
+    .share-btn-text {
+      font-size: 28px;
+      font-weight: 600;
+      color: #fff;
     }
   }
 }

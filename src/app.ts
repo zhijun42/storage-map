@@ -15,15 +15,11 @@ function App({ children }: PropsWithChildren) {
     seedMockDataIfNeeded()
     pullFromCloudIfEmpty()
 
-    // First-launch: prompt user profile
-    try {
-      const profile = Taro.getStorageSync('user_profile')
-      if (!profile) {
-        setTimeout(() => {
-          Taro.navigateTo({ url: '/pages/profile/index' })
-        }, 1000)
-      }
-    } catch {}
+    // Hackathon: always show onboarding on launch for demo purposes
+    Taro.removeStorageSync('onboarding_done')
+    setTimeout(() => {
+      Taro.navigateTo({ url: '/pages/onboarding/index' })
+    }, 500)
   }, [])
 
   return children

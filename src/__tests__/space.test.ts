@@ -562,3 +562,48 @@ describe('moveItems (batch)', () => {
     expect(result).toBe(false)
   })
 })
+
+describe('initExampleSpace', () => {
+  // Import here so mock is already set up
+  let initExampleSpace: any
+  beforeAll(async () => {
+    initExampleSpace = (await import('../services/init-space')).initExampleSpace
+  })
+
+  it('creates demo space with rooms, containers, items', async () => {
+    const result = await initExampleSpace()
+    expect(result.rooms).toBeGreaterThan(0)
+    expect(result.cabinets).toBeGreaterThan(0)
+    expect(result.items).toBeGreaterThan(0)
+
+    const spaces = await getSpaces()
+    expect(spaces.some((s: any) => s.name === '示例之家')).toBe(true)
+  })
+
+  it('preserves user-created spaces when re-initializing', async () => {
+    await createSpace('张先生的家')
+    await createSpace('李女士的家')
+    const before = await getSpaces()
+    expect(before).toHaveLength(2)
+
+    await initExampleSpace()
+
+    const after = await getSpaces()
+    expect(after.some((s: any) => s.name === '张先生的家')).toBe(true)
+    expect(after.some((s: any) => s.name === '李女士的家')).toBe(true)
+    expect(after.some((s: any) => s.name === '示例之家')).toBe(true)
+    expect(after).toHaveLength(3)
+  })
+
+  it('replaces existing demo space on re-init', async () => {
+    await initExampleSpace()
+    const first = await getSpaces()
+    const demoCount1 = first.filter((s: any) => s.name === '示例之家').length
+    expect(demoCount1).toBe(1)
+
+    await initExampleSpace()
+    const second = await getSpaces()
+    const demoCount2 = second.filter((s: any) => s.name === '示例之家').length
+    expect(demoCount2).toBe(1)
+  })
+})

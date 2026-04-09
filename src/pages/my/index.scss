@@ -36,6 +36,17 @@
         display: block;
       }
 
+      .profile-role {
+        font-size: 24px;
+        color: hsl(217, 91%, 55%);
+        background: hsl(217, 91%, 96%);
+        display: inline-block;
+        padding: 2px 14px;
+        border-radius: 6px;
+        margin-top: 6px;
+        font-weight: 500;
+      }
+
       .profile-detail {
         font-size: 24px;
         color: hsl(215, 10%, 46%);

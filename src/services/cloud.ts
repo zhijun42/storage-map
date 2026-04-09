@@ -362,3 +362,19 @@ export async function cloudResolveShare(token: string) {
   }) as any
   return res.result
 }
+
+export async function cloudRevokeShare(spaceId: string) {
+  const res = await Taro.cloud!.callFunction({
+    name: 'share',
+    data: { action: 'revoke', spaceId },
+  }) as any
+  return res.result
+}
+
+export async function cloudGetShareStatus(spaceId: string) {
+  const res = await Taro.cloud!.callFunction({
+    name: 'share',
+    data: { action: 'status', spaceId },
+  }) as any
+  return res.result
+}
