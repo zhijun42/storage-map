@@ -35,6 +35,9 @@ const PHASE_LABELS: Record<Phase, string[]> = {
 // No BG_COLORS needed — each phase has fixed visual style matching the floorplan reference
 
 // ===== Types =====
+type Facing = 'top' | 'bottom' | 'left' | 'right'
+const FACING_LABELS: Record<Facing, string> = { top: '上', bottom: '下', left: '左', right: '右' }
+
 interface Rect {
   id: string
   x: number; y: number; w: number; h: number
@@ -42,6 +45,7 @@ interface Rect {
   slotType: 'open' | 'closed'
   phase: Phase
   cabinetId?: string
+  facing?: Facing
 }
 
 interface DrawState {
@@ -236,6 +240,10 @@ export default function DrawEditor() {
     getSnapPoolRects().forEach(r => {
       xP.add(r.x); xP.add(r.x + r.w); yP.add(r.y); yP.add(r.y + r.h)
     })
+    // In elevation mode, add boundary edges to snap pool
+    if (phaseRef.current === 'elevation' && elevWidthRef.current != null) {
+      xP.add(0); xP.add(elevWidthRef.current)
+    }
     return { xPool: Array.from(xP), yPool: Array.from(yP) }
   }
 
@@ -315,6 +323,24 @@ export default function DrawEditor() {
       ctx.font = `600 ${Math.round(sw(10))}px -apple-system, sans-serif`
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
       ctx.fillText(rect.labels[0] || '', x + w / 2, y - sw(3))
+
+      // Draw facing arrow
+      if (rect.facing) {
+        const arrowSize = sw(8)
+        const cx = x + w / 2; const cy = y + h / 2
+        ctx.fillStyle = isSel ? 'rgba(234,179,8,0.6)' : 'rgba(239,68,68,0.5)'
+        ctx.beginPath()
+        if (rect.facing === 'top') {
+          ctx.moveTo(cx, y + sw(2)); ctx.lineTo(cx - arrowSize, y + sw(2) + arrowSize); ctx.lineTo(cx + arrowSize, y + sw(2) + arrowSize)
+        } else if (rect.facing === 'bottom') {
+          ctx.moveTo(cx, y + h - sw(2)); ctx.lineTo(cx - arrowSize, y + h - sw(2) - arrowSize); ctx.lineTo(cx + arrowSize, y + h - sw(2) - arrowSize)
+        } else if (rect.facing === 'left') {
+          ctx.moveTo(x + sw(2), cy); ctx.lineTo(x + sw(2) + arrowSize, cy - arrowSize); ctx.lineTo(x + sw(2) + arrowSize, cy + arrowSize)
+        } else if (rect.facing === 'right') {
+          ctx.moveTo(x + w - sw(2), cy); ctx.lineTo(x + w - sw(2) - arrowSize, cy - arrowSize); ctx.lineTo(x + w - sw(2) - arrowSize, cy + arrowSize)
+        }
+        ctx.closePath(); ctx.fill()
+      }
     }
   }
 
@@ -388,6 +414,32 @@ export default function DrawEditor() {
     }
 
     if (p === 'elevation') {
+      // Draw width guide boundary with gray overlay outside
+      const maxW = elevWidthRef.current
+      if (maxW != null) {
+        const swf = (px: number) => px / v.scale
+        // Gray out outside the width boundary
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'
+        ctx.fillRect(wL, wT, -wL, wB - wT) // left side
+        ctx.fillRect(maxW, wT, wR - maxW, wB - wT) // right side
+
+        // Boundary lines
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)'
+        ctx.lineWidth = swf(2)
+        ctx.setLineDash([])
+        ctx.beginPath()
+        ctx.moveTo(0, wT); ctx.lineTo(0, wB)
+        ctx.moveTo(maxW, wT); ctx.lineTo(maxW, wB)
+        ctx.stroke()
+
+        // Width label
+        ctx.fillStyle = 'rgba(59, 130, 246, 0.7)'
+        ctx.font = `600 ${Math.round(swf(11))}px -apple-system, sans-serif`
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'
+        const cabWidthMM = Math.round(maxW * ELEV_PX_TO_MM)
+        ctx.fillText(`${cabWidthMM}mm`, maxW / 2, -swf(4))
+      }
+
       all.filter(r => r.phase === 'elevation' && r.cabinetId === editCabRef.current)
         .forEach(r => drawElevRect(ctx, r, selId))
     } else {
@@ -580,7 +632,15 @@ export default function DrawEditor() {
     if (sx !== null && ds.snappedX !== sx) { try { Taro.vibrateShort({ type: 'light' }) } catch {} }
     if (sy !== null && ds.snappedY !== sy) { try { Taro.vibrateShort({ type: 'light' }) } catch {} }
 
-    const ax = sx ?? wc.x; const ay = sy ?? wc.y
+    let ax = sx ?? wc.x; let ay = sy ?? wc.y
+
+    // Clamp elevation drawing within cabinet width
+    if (phaseRef.current === 'elevation' && elevWidthRef.current != null) {
+      const maxW = elevWidthRef.current
+      ax = Math.min(Math.max(ax, 0), maxW)
+      if (ds.startX > maxW) ds.startX = maxW
+      if (ds.startX < 0) ds.startX = 0
+    }
     const pv = stdRect(ds.startX, ds.startY, ax, ay)
 
     let isError = false
@@ -670,6 +730,13 @@ export default function DrawEditor() {
   function updateSlotType(type: 'open' | 'closed') {
     if (!selectedRectId) return
     const newAll = allRectsRef.current.map(r => r.id === selectedRectId ? { ...r, slotType: type } : r)
+    allRectsRef.current = newAll; setAllRects(newAll)
+    pushHistory(newAll)
+  }
+
+  function updateFacing(dir: Facing) {
+    if (!selectedRectId) return
+    const newAll = allRectsRef.current.map(r => r.id === selectedRectId ? { ...r, facing: dir } : r)
     allRectsRef.current = newAll; setAllRects(newAll)
     pushHistory(newAll)
   }
@@ -815,8 +882,29 @@ export default function DrawEditor() {
     setPhase(p); setSelectedRectId(null); selectedIdRef.current = null
   }
 
+  // Elevation width constraint: max width in elevation px derived from cabinet's floorplan width
+  const elevWidthRef = useRef<number | null>(null)
+
   function enterElevation(cabinetId: string) {
-    viewRef.current = { scale: 1, ox: 0, oy: 0 }
+    // Calculate elevation width limit from cabinet's floorplan width
+    const cab = allRectsRef.current.find(r => r.id === cabinetId)
+    if (cab) {
+      // Front face width depends on facing direction
+      const facing = cab.facing || 'bottom'
+      const frontPx = (facing === 'left' || facing === 'right') ? cab.h : cab.w
+      const cabWidthMM = frontPx * FLOOR_PX_TO_MM
+      elevWidthRef.current = cabWidthMM / ELEV_PX_TO_MM
+    } else {
+      elevWidthRef.current = null
+    }
+    // Center the elevation area in the canvas
+    const maxW = elevWidthRef.current
+    if (maxW != null) {
+      const cw = cwRef.current
+      viewRef.current = { scale: 1, ox: Math.round((cw - maxW) / 2), oy: 40 }
+    } else {
+      viewRef.current = { scale: 1, ox: 0, oy: 0 }
+    }
     setEditingCabinetId(cabinetId); editCabRef.current = cabinetId
     setPhase('elevation'); setSelectedRectId(null); selectedIdRef.current = null
     setTimeout(() => {
@@ -920,6 +1008,7 @@ export default function DrawEditor() {
           movable: false,
           photo: '',
           elevationAspect,
+          facing: c.facing,
           x: c.x, y: c.y, width: c.width, height: c.height,
           slots: slots.length > 0 ? slots : [{ label: '第1层', type: 'shelf', items: '', photo: '' }],
         })
@@ -1018,7 +1107,7 @@ export default function DrawEditor() {
 
         return {
           id: cab.id, name: cab.labels[0] || `储物柜 ${ci + 1}`,
-          room: 'unknown',
+          room: 'unknown', facing: cab.facing || 'bottom',
           x: Math.round(cab.x * pmm), y: Math.round(cab.y * pmm),
           width: Math.round(cab.w * pmm), height: Math.round(cab.h * pmm),
           columns,
@@ -1176,10 +1265,28 @@ export default function DrawEditor() {
               </View>
             </View>
 
+            {/* Cabinet: facing direction */}
+            {phase === 'cabinet' && (
+              <View className='type-section'>
+                <Text className='section-label'>开门方向</Text>
+                <View className='type-btns'>
+                  {(['top', 'bottom', 'left', 'right'] as Facing[]).map(dir => (
+                    <View
+                      key={dir}
+                      className={`type-btn ${selectedRect?.facing === dir ? 'active' : ''}`}
+                      onClick={() => updateFacing(dir)}
+                    >
+                      <Text className='type-btn-text'>{FACING_LABELS[dir]}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Elevation: slot type toggle */}
             {phase === 'elevation' && (
               <View className='type-section'>
-                <Text className='section-label'>1. 隔间形态</Text>
+                <Text className='section-label'>隔间形态</Text>
                 <View className='type-btns'>
                   <View className={`type-btn ${slotType !== 'closed' ? 'active' : ''}`} onClick={() => updateSlotType('open')}>
                     <Text className='type-btn-text'>开放式 (层板)</Text>
@@ -1191,32 +1298,30 @@ export default function DrawEditor() {
               </View>
             )}
 
-            {/* Label input */}
-            {phase === 'elevation' && (
-              <Text className='section-label input-label'>2. 储物类别 (可多选)</Text>
+            {/* Label input + tags — not shown in elevation mode */}
+            {phase !== 'elevation' && (
+              <>
+                <View className='input-row'>
+                  <Input
+                    className='custom-input'
+                    placeholder={`输入自定义${PHASE_META[phase].label}名，回车确认`}
+                    value={customInput}
+                    onInput={e => setCustomInput(e.detail.value)}
+                    onConfirm={() => toggleLabel(customInput)}
+                  />
+                </View>
+                <View className='preset-tags'>
+                  {PHASE_LABELS[phase].map(p => {
+                    const isActive = activeLabels.includes(p)
+                    return (
+                      <View key={p} className={`tag ${isActive ? 'active' : ''}`} onClick={() => toggleLabel(p)}>
+                        <Text className='tag-text'>{p}</Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              </>
             )}
-            <View className='input-row'>
-              <Input
-                className='custom-input'
-                placeholder={`输入自定义${PHASE_META[phase].label}名，回车确认`}
-                value={customInput}
-                onInput={e => setCustomInput(e.detail.value)}
-                onConfirm={() => toggleLabel(customInput)}
-              />
-            </View>
-
-            {/* Preset tags */}
-            <View className='preset-tags'>
-              {PHASE_LABELS[phase].map(p => {
-                const isActive = activeLabels.includes(p)
-                return (
-                  <View key={p} className={`tag ${isActive ? 'active' : ''}`} onClick={() => toggleLabel(p)}>
-                    <Text className='tag-text'>{p}</Text>
-                    {isActive && phase === 'elevation' && <Text className='tag-check'>&#10003;</Text>}
-                  </View>
-                )
-              })}
-            </View>
 
             {/* Footer */}
             <View className='panel-footer'>

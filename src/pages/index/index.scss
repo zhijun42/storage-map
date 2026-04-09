@@ -32,6 +32,35 @@
 
   .floorplan-section {
     margin-bottom: 28px;
+
+    .view-toggle {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 12px;
+
+      .toggle-btn {
+        padding: 8px 20px;
+        border-radius: 999px;
+        background: hsl(210, 12%, 96%);
+        border: 1.5px solid hsl(210, 12%, 90%);
+
+        &:active { opacity: 0.8; }
+
+        &.active {
+          background: hsl(217, 91%, 55%);
+          border-color: hsl(217, 91%, 55%);
+
+          .toggle-text { color: #fff; font-weight: 600; }
+        }
+
+        .toggle-text {
+          font-size: 22px;
+          font-weight: 500;
+          color: hsl(215, 10%, 50%);
+        }
+      }
+    }
   }
 
   .actions {

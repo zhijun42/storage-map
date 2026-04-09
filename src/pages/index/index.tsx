@@ -3,13 +3,17 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { getSpaces, getSpace } from '../../services/space'
 import FloorplanView from '../../components/FloorplanView'
+import IsometricFloorplanView from '../../components/IsometricFloorplanView'
 import './index.scss'
 
 export default function Index() {
   const [spaces, setSpaces] = useState<any[]>([])
   const [activeSpace, setActiveSpace] = useState<any>(null)
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
+  const [has3D, setHas3D] = useState(false)
+  const [highlightId, setHighlightId] = useState<string | null>(null)
 
-  useDidShow(() => { loadSpaces() })
+  useDidShow(() => { setHighlightId(null); setHas3D(false); setViewMode('2d'); loadSpaces() })
 
   async function loadSpaces() {
     const data = await getSpaces()
@@ -22,9 +26,12 @@ export default function Index() {
 
   function handleContainerClick(roomId: string, containerId: string) {
     if (!activeSpace) return
-    Taro.navigateTo({
-      url: `/pages/container/index?spaceId=${activeSpace._id}&roomId=${roomId}&containerId=${containerId}`,
-    })
+    setHighlightId(containerId)
+    setTimeout(() => {
+      Taro.navigateTo({
+        url: `/pages/container/index?spaceId=${activeSpace._id}&roomId=${roomId}&containerId=${containerId}`,
+      })
+    }, 300)
   }
 
   return (
@@ -48,10 +55,36 @@ export default function Index() {
 
       {activeSpace && activeSpace.rooms?.length > 0 && (
         <View className='floorplan-section'>
-          <FloorplanView
-            rooms={activeSpace.rooms}
-            onContainerClick={handleContainerClick}
-          />
+          <View className='view-toggle'>
+            <View
+              className={`toggle-btn ${viewMode === '2d' ? 'active' : ''}`}
+              onClick={() => setViewMode('2d')}
+            >
+              <Text className='toggle-text'>2D</Text>
+            </View>
+            <View
+              className={`toggle-btn ${viewMode === '3d' ? 'active' : ''}`}
+              onClick={() => { setViewMode('3d'); setHas3D(true) }}
+            >
+              <Text className='toggle-text'>3D</Text>
+            </View>
+          </View>
+          {viewMode === '2d' && (
+            <FloorplanView
+              rooms={activeSpace.rooms}
+              highlightContainerId={highlightId}
+              onContainerClick={handleContainerClick}
+            />
+          )}
+          {has3D && (
+            <View style={{ display: viewMode === '3d' ? 'block' : 'none' }}>
+              <IsometricFloorplanView
+                rooms={activeSpace.rooms}
+                highlightContainerId={highlightId}
+                onContainerClick={handleContainerClick}
+              />
+            </View>
+          )}
         </View>
       )}
 
