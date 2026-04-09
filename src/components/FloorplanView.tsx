@@ -126,6 +126,13 @@ export default function FloorplanView({ rooms, compact, spaceId, highlightContai
 
       const hits: HitArea[] = []
 
+      // Collect all doors/windows from all rooms for shared-wall matching
+      const allDW: { x: number; y: number; width: number; type: string }[] = []
+      floorplanData.rooms.forEach((room: any) => {
+        ;(room.doors || []).forEach((d: any) => allDW.push({ ...d, type: 'door' }))
+        ;(room.windows || []).forEach((w: any) => allDW.push({ ...w, type: 'window' }))
+      })
+
       // Rooms
       floorplanData.rooms.forEach((room: any) => {
         const rx = Math.min(...room.walls.map((w: any) => w.x1), ...room.walls.map((w: any) => w.x2))
@@ -136,26 +143,48 @@ export default function FloorplanView({ rooms, compact, spaceId, highlightContai
         ctx.fillStyle = '#f8f9fb'
         ctx.fillRect(ox + rx * scale, oy + ry * scale, rw * scale, rh * scale)
 
-        room.walls.forEach((w: any) => {
-          ctx.beginPath()
-          ctx.moveTo(ox + w.x1 * scale, oy + w.y1 * scale)
-          ctx.lineTo(ox + w.x2 * scale, oy + w.y2 * scale)
-          ctx.strokeStyle = '#1a1a2e'
-          ctx.lineWidth = 2.5
-          ctx.stroke()
-        })
+        // Draw walls with door/window gaps
+        ctx.strokeStyle = '#1a1a2e'
+        ctx.lineWidth = 2.5
+        const wallDefs = [
+          { fixedCoord: ry, rangeStart: rx, rangeEnd: rx + rw, isH: true },
+          { fixedCoord: ry + rh, rangeStart: rx, rangeEnd: rx + rw, isH: true },
+          { fixedCoord: rx, rangeStart: ry, rangeEnd: ry + rh, isH: false },
+          { fixedCoord: rx + rw, rangeStart: ry, rangeEnd: ry + rh, isH: false },
+        ]
+        for (const wd of wallDefs) {
+          const gaps = allDW
+            .filter(dw => Math.abs(dw.y - wd.fixedCoord) < 50 &&
+              dw.x + dw.width > wd.rangeStart && dw.x < wd.rangeEnd)
+            .map(dw => ({
+              start: Math.max(dw.x, wd.rangeStart),
+              end: Math.min(dw.x + dw.width, wd.rangeEnd),
+              type: dw.type,
+            }))
+            .sort((a, b) => a.start - b.start)
 
-        if (room.windows) {
-          room.windows.forEach((win: any) => {
+          const drawSeg = (from: number, to: number) => {
             ctx.beginPath()
-            ctx.moveTo(ox + win.x * scale, oy + (win.y || 0) * scale)
-            ctx.lineTo(ox + (win.x + win.width) * scale, oy + (win.y || 0) * scale)
-            ctx.strokeStyle = 'hsl(217, 91%, 60%)'
-            ctx.lineWidth = 3
-            ctx.globalAlpha = 0.4
+            if (wd.isH) { ctx.moveTo(ox + from * scale, oy + wd.fixedCoord * scale); ctx.lineTo(ox + to * scale, oy + wd.fixedCoord * scale) }
+            else { ctx.moveTo(ox + wd.fixedCoord * scale, oy + from * scale); ctx.lineTo(ox + wd.fixedCoord * scale, oy + to * scale) }
             ctx.stroke()
-            ctx.globalAlpha = 1
-          })
+          }
+
+          if (gaps.length === 0) {
+            drawSeg(wd.rangeStart, wd.rangeEnd)
+          } else {
+            let cursor = wd.rangeStart
+            for (const gap of gaps) {
+              if (gap.start > cursor + 1) drawSeg(cursor, gap.start)
+              if (gap.type === 'window') {
+                ctx.save(); ctx.strokeStyle = 'hsl(217, 91%, 60%)'; ctx.lineWidth = 3; ctx.globalAlpha = 0.4
+                drawSeg(gap.start, gap.end)
+                ctx.restore(); ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 2.5
+              }
+              cursor = gap.end
+            }
+            if (cursor < wd.rangeEnd - 1) drawSeg(cursor, wd.rangeEnd)
+          }
         }
 
         ctx.fillStyle = '#8e99a4'
@@ -165,9 +194,10 @@ export default function FloorplanView({ rooms, compact, spaceId, highlightContai
         ctx.fillText(room.name, ox + (rx + rw / 2) * scale, oy + (ry + rh / 2) * scale + 4)
       })
 
-      // Furniture
+      // Furniture (skip doors/windows — handled via wall gaps)
       if (floorplanData.furniture) {
         floorplanData.furniture.forEach((f: any) => {
+          if (f.name === '门' || f.name === '窗') return
           const fx = ox + f.x * scale
           const fy = oy + f.y * scale
           const fw = f.width * scale
