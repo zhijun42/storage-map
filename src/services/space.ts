@@ -54,17 +54,27 @@ export async function pullFromCloudIfEmpty() {
 
   console.log('[Sync] Local empty, pulling from cloud...')
   try {
+    // Pull space data
     const spaces = await cloudService.cloudGetSpaces()
-    if (spaces.length === 0) return
-
-    const fullSpaces: any[] = []
-    for (const s of spaces) {
-      const full = await cloudService.cloudGetSpace(s._id)
-      if (full) fullSpaces.push(full)
+    if (spaces.length > 0) {
+      const fullSpaces: any[] = []
+      for (const s of spaces) {
+        const full = await cloudService.cloudGetSpace(s._id)
+        if (full) fullSpaces.push(full)
+      }
+      if (fullSpaces.length > 0) {
+        saveData({ spaces: fullSpaces })
+        console.log(`[Sync] Pulled ${fullSpaces.length} spaces from cloud`)
+      }
     }
-    if (fullSpaces.length > 0) {
-      saveData({ spaces: fullSpaces })
-      console.log(`[Sync] Pulled ${fullSpaces.length} spaces from cloud`)
+
+    // Pull floorplan visual data
+    const fp = await cloudService.cloudLoadFloorplan()
+    if (fp) {
+      if (fp.floorplan) Taro.setStorageSync('drawn_floorplan', fp.floorplan)
+      if (fp.rects) Taro.setStorageSync('draw_all_rects', fp.rects)
+      if (fp.rectMap) Taro.setStorageSync('rect_container_map', fp.rectMap)
+      console.log('[Sync] Pulled floorplan data from cloud')
     }
   } catch (err: any) {
     console.warn('[Sync] Pull failed:', err.message || err)

@@ -293,6 +293,33 @@ export async function cloudSearchItems(query: string) {
   })
 }
 
+// ===== Floorplan Sync =====
+
+export async function cloudSaveFloorplan(floorplanJson: string, rectsJson: string, rectMapJson: string) {
+  const db = getDb()
+  log('saveFloorplan start')
+  const existing = await db.collection('floorplans').limit(1).get()
+  const data = { floorplan: floorplanJson, rects: rectsJson, rectMap: rectMapJson, updatedAt: new Date() }
+  if (existing.data.length > 0) {
+    await db.collection('floorplans').doc(existing.data[0]._id).update({ data })
+  } else {
+    await db.collection('floorplans').add({ data })
+  }
+  log('saveFloorplan done')
+}
+
+export async function cloudLoadFloorplan(): Promise<{ floorplan: string; rects: string; rectMap: string } | null> {
+  const db = getDb()
+  log('loadFloorplan start')
+  const res = await db.collection('floorplans').limit(1).get()
+  if (res.data.length > 0) {
+    log('loadFloorplan found')
+    return { floorplan: res.data[0].floorplan, rects: res.data[0].rects, rectMap: res.data[0].rectMap }
+  }
+  log('loadFloorplan empty')
+  return null
+}
+
 // ===== Photo Upload =====
 
 export async function cloudUploadPhoto(filePath: string, cloudPath: string): Promise<string> {

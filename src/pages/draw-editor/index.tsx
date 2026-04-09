@@ -2,6 +2,7 @@ import { View, Text, Canvas, Input } from '@tarojs/components'
 import Taro from '@tarojs/taro'
 import { useState, useRef, useEffect } from 'react'
 import { getSpaces, getSpace, createSpace, deleteSpace, addRoom, addContainer } from '../../services/space'
+import { cloudSaveFloorplan } from '../../services/cloud'
 import { CATEGORIES } from '../../services/items'
 import './index.scss'
 
@@ -791,6 +792,14 @@ export default function DrawEditor() {
           Taro.setStorageSync('rect_container_map', JSON.stringify(map))
         }
       }
+
+      // Sync visual data to cloud (async, non-blocking)
+      try {
+        const fpJson = Taro.getStorageSync('drawn_floorplan') || ''
+        const rectsJson = Taro.getStorageSync('draw_all_rects') || ''
+        const mapJson = Taro.getStorageSync('rect_container_map') || ''
+        cloudSaveFloorplan(fpJson, rectsJson, mapJson).catch(e => console.warn('[Sync] floorplan:', e.message))
+      } catch {}
 
       Taro.hideLoading()
       Taro.showModal({
