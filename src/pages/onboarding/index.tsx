@@ -23,19 +23,24 @@ export default function OnboardingPage() {
 
     setLoading(true)
     try {
+      console.log(`[onboarding] resolving share code: ${code.trim()}`)
       const result = await resolveShareLink(code.trim())
+      console.log(`[onboarding] resolve result:`, JSON.stringify(result))
       if (!result.success) {
         setLoading(false)
         Taro.showModal({ title: '加入失败', content: result.error || '分享码无效', showCancel: false })
         return
       }
-      await pullSharedSpace(result.spaceId)
+      console.log(`[onboarding] pulling shared space: ${result.spaceId}`)
+      const pulled = await pullSharedSpace(result.spaceId)
+      console.log(`[onboarding] pull result: ${pulled}`)
       Taro.setStorageSync('user_role', 'resident')
       Taro.setStorageSync('onboarding_done', '1')
       setLoading(false)
       Taro.showToast({ title: '已加入空间', icon: 'success' })
       setTimeout(() => Taro.switchTab({ url: '/pages/index/index' }), 800)
-    } catch {
+    } catch (e: any) {
+      console.error(`[onboarding] error:`, e.message || e)
       setLoading(false)
       Taro.showToast({ title: '加入失败', icon: 'none' })
     }

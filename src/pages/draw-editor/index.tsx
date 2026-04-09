@@ -1257,7 +1257,7 @@ export default function DrawEditor() {
         const fpJson = Taro.getStorageSync(KEY_FLOORPLAN) || ''
         const rectsJson = Taro.getStorageSync(KEY_RECTS) || ''
         const mapJson = Taro.getStorageSync(KEY_MAP) || ''
-        cloudSaveFloorplan(fpJson, rectsJson, mapJson).catch(e => console.warn('[Sync] floorplan:', e.message))
+        cloudSaveFloorplan(spaceId, fpJson, rectsJson, mapJson).catch(e => console.warn('[Sync] floorplan:', e.message))
       } catch {}
 
       Taro.hideLoading()

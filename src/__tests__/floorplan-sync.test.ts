@@ -26,8 +26,8 @@ let savedFloorplanData: any = null
 let mockCloudFloorplan: any = null
 
 jest.mock('../services/cloud', () => ({
-  cloudGetSpaces: async () => [],
-  cloudGetSpace: async () => null,
+  cloudGetSpaces: async () => mockCloudFloorplan ? [{ _id: 'cloud_space_1', name: 'test' }] : [],
+  cloudGetSpace: async () => mockCloudFloorplan ? { _id: 'cloud_space_1', name: 'test', rooms: [] } : null,
   cloudCreateSpace: async () => ({}),
   cloudDeleteSpace: async () => {},
   cloudAddRoom: async () => ({}),
@@ -39,10 +39,10 @@ jest.mock('../services/cloud', () => ({
   cloudUploadPhoto: async () => '',
   cloudCreateShare: async () => '',
   cloudResolveShare: async () => ({}),
-  cloudSaveFloorplan: async (fp: string, rects: string, map: string) => {
-    savedFloorplanData = { floorplan: fp, rects: rects, rectMap: map }
+  cloudSaveFloorplan: async (spaceId: string, fp: string, rects: string, map: string) => {
+    savedFloorplanData = { spaceId, floorplan: fp, rects: rects, rectMap: map }
   },
-  cloudLoadFloorplan: async () => mockCloudFloorplan,
+  cloudLoadFloorplan: async (_spaceId: string) => mockCloudFloorplan,
 }))
 
 beforeEach(() => {
@@ -107,9 +107,9 @@ describe('pullFromCloudIfEmpty restores floorplan', () => {
     // Local is empty — pullFromCloudIfEmpty should restore
     await pullFromCloudIfEmpty()
 
-    const fp = Taro.getStorageSync('drawn_floorplan')
-    const rects = Taro.getStorageSync('draw_all_rects')
-    const map = Taro.getStorageSync('rect_container_map')
+    const fp = Taro.getStorageSync('drawn_floorplan_cloud_space_1')
+    const rects = Taro.getStorageSync('draw_all_rects_cloud_space_1')
+    const map = Taro.getStorageSync('rect_container_map_cloud_space_1')
 
     expect(fp).toBeTruthy()
     expect(JSON.parse(fp).rooms[0].name).toBe('客厅')

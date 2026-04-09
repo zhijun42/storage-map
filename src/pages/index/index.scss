@@ -2,6 +2,43 @@
   padding: 24px 32px;
   padding-bottom: 32px;
 
+  &.onboarding {
+    padding-top: 80px;
+
+    .ob-header {
+      text-align: center;
+      margin-bottom: 48px;
+      .ob-title { font-size: 48px; font-weight: 800; color: hsl(220, 25%, 10%); display: block; }
+      .ob-subtitle { font-size: 28px; color: hsl(215, 10%, 46%); display: block; margin-top: 12px; }
+    }
+
+    .ob-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .ob-card {
+      padding: 40px 32px;
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      border: 2px solid hsl(210, 12%, 90%);
+      text-align: center;
+      &:active { transform: scale(0.98); }
+      .ob-card-title { font-size: 34px; font-weight: 700; color: hsl(220, 25%, 10%); display: block; margin-bottom: 8px; }
+      .ob-card-desc { font-size: 26px; color: hsl(215, 10%, 46%); display: block; }
+    }
+
+    .ob-code {
+      text-align: center;
+      .ob-code-label { font-size: 28px; color: hsl(220, 25%, 10%); display: block; margin-bottom: 24px; }
+      .ob-code-input { width: 100%; font-size: 36px; text-align: center; letter-spacing: 8px; background: #fff; border: 2px solid hsl(210, 12%, 88%); border-radius: 16px; height: 96px; line-height: 96px; padding: 0 24px; box-sizing: border-box; margin-bottom: 32px; }
+      .ob-join-btn { padding: 28px; background: hsl(142, 71%, 45%); border-radius: 999px; margin-bottom: 24px; &:active { opacity: 0.9; } &.disabled { opacity: 0.5; } .ob-join-text { font-size: 30px; font-weight: 600; color: #fff; } }
+      .ob-back { font-size: 26px; color: hsl(217, 91%, 60%); display: block; }
+    }
+  }
+
   .space-switcher {
     display: flex;
     gap: 12px;

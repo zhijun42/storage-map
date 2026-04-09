@@ -244,26 +244,59 @@ async function handleDeleteContainer(openId, { spaceId, roomId, containerId }) {
   return { success: true }
 }
 
+// ===== Floorplan =====
+
+async function handleSaveFloorplan(openId, { spaceId, floorplan, rects, rectMap }) {
+  const perm = await checkPermission(openId, spaceId)
+  if (!perm) return { success: false, error: '无权限' }
+
+  const existing = await db.collection('floorplans').where({ spaceId }).limit(1).get()
+  const data = { spaceId, floorplan, rects, rectMap, updatedAt: new Date() }
+  if (existing.data.length > 0) {
+    await db.collection('floorplans').doc(existing.data[0]._id).update({ data })
+  } else {
+    await db.collection('floorplans').add({ data })
+  }
+  return { success: true }
+}
+
+async function handleLoadFloorplan(openId, { spaceId }) {
+  const perm = await checkPermission(openId, spaceId)
+  if (!perm) return { success: false, error: '无权限' }
+
+  const res = await db.collection('floorplans').where({ spaceId }).limit(1).get()
+  if (res.data.length > 0) {
+    return { success: true, floorplan: res.data[0].floorplan, rects: res.data[0].rects, rectMap: res.data[0].rectMap }
+  }
+  return { success: true, floorplan: null, rects: null, rectMap: null }
+}
+
 // ===== Entry point =====
 
 exports.main = async (event) => {
   const wxContext = cloud.getWXContext()
   const openId = wxContext.OPENID || ''
+  console.log(`[space-api] action=${event.action} openId=${openId} spaceId=${event.spaceId || '-'} wxContext:`, JSON.stringify(wxContext))
   if (!openId) return { success: false, error: '未登录' }
 
   const { action } = event
 
   try {
+    let result
     switch (action) {
-      case 'getSpaces':       return await handleGetSpaces(openId)
-      case 'getSpace':        return await handleGetSpace(openId, event)
-      case 'addRoom':         return await handleAddRoom(openId, event)
-      case 'deleteRoom':      return await handleDeleteRoom(openId, event)
-      case 'addContainer':    return await handleAddContainer(openId, event)
-      case 'updateContainer': return await handleUpdateContainer(openId, event)
-      case 'deleteContainer': return await handleDeleteContainer(openId, event)
-      default: return { success: false, error: `Unknown action: ${action}` }
+      case 'getSpaces':       result = await handleGetSpaces(openId); break
+      case 'getSpace':        result = await handleGetSpace(openId, event); break
+      case 'addRoom':         result = await handleAddRoom(openId, event); break
+      case 'deleteRoom':      result = await handleDeleteRoom(openId, event); break
+      case 'addContainer':    result = await handleAddContainer(openId, event); break
+      case 'updateContainer': result = await handleUpdateContainer(openId, event); break
+      case 'deleteContainer': result = await handleDeleteContainer(openId, event); break
+      case 'saveFloorplan':   result = await handleSaveFloorplan(openId, event); break
+      case 'loadFloorplan':   result = await handleLoadFloorplan(openId, event); break
+      default: result = { success: false, error: `Unknown action: ${action}` }
     }
+    console.log(`[space-api] ${action} result: success=${result.success}`, result.error || '')
+    return result
   } catch (err) {
     console.error(`[space-api] ${action} error:`, err)
     return { success: false, error: err.message || '操作失败' }

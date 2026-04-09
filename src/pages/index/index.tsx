@@ -1,4 +1,4 @@
-import { View, Text } from '@tarojs/components'
+import { View, Text, Input } from '@tarojs/components'
 import Taro, { useDidShow, useRouter } from '@tarojs/taro'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { getSpaces, getSpace, createSpace, createShareLink, resolveShareLink, pullSharedSpace } from '../../services/space'
@@ -16,20 +16,19 @@ export default function Index() {
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d')
   const [has3D, setHas3D] = useState(false)
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  const [ready, setReady] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(true)
+  const [shareCode, setShareCode] = useState('')
+  const [showCodeInput, setShowCodeInput] = useState(false)
+  const [joining, setJoining] = useState(false)
 
   useEffect(() => {
-    // Hackathon: always show onboarding (remove flag on launch)
+    // Hackathon: always show onboarding on launch
     Taro.removeStorageSync('onboarding_done')
-    setTimeout(() => {
-      Taro.navigateTo({
-        url: '/pages/onboarding/index',
-        fail: (err) => console.error('[Onboarding] navigateTo failed:', err),
-      })
-    }, 300)
-
     const shareToken = router.params.shareToken
-    if (shareToken) handleShareToken(shareToken)
+    if (shareToken) {
+      setShowOnboarding(false)
+      handleShareToken(shareToken)
+    }
   }, [])
 
   useDidShow(() => {
@@ -37,10 +36,45 @@ export default function Index() {
     setUserRole(role as any)
     const onboarded = Taro.getStorageSync('onboarding_done')
     if (onboarded) {
-      setReady(true)
+      setShowOnboarding(false)
       loadSpaces()
     }
   })
+
+  function handlePickOrganizer() {
+    Taro.setStorageSync('user_role', 'organizer')
+    Taro.setStorageSync('onboarding_done', '1')
+    setUserRole('organizer')
+    setShowOnboarding(false)
+    loadSpaces()
+  }
+
+  async function handleJoinAsResident() {
+    if (!shareCode.trim()) {
+      Taro.showToast({ title: '请输入分享码', icon: 'none' })
+      return
+    }
+    setJoining(true)
+    try {
+      const result = await resolveShareLink(shareCode.trim())
+      if (!result.success) {
+        setJoining(false)
+        Taro.showModal({ title: '加入失败', content: result.error || '分享码无效', showCancel: false })
+        return
+      }
+      await pullSharedSpace(result.spaceId)
+      Taro.setStorageSync('user_role', 'resident')
+      Taro.setStorageSync('onboarding_done', '1')
+      setUserRole('resident')
+      setJoining(false)
+      setShowOnboarding(false)
+      Taro.showToast({ title: '已加入空间', icon: 'success' })
+      loadSpaces()
+    } catch {
+      setJoining(false)
+      Taro.showToast({ title: '加入失败', icon: 'none' })
+    }
+  }
 
   async function handleShareToken(token: string) {
     Taro.showLoading({ title: '加载共享空间...' })
@@ -109,7 +143,37 @@ export default function Index() {
     }
   }
 
-  if (!ready) return <View className='index-page' />
+  if (showOnboarding) {
+    return (
+      <View className='index-page onboarding'>
+        <View className='ob-header'>
+          <Text className='ob-title'>收纳地图</Text>
+          <Text className='ob-subtitle'>请选择您的身份</Text>
+        </View>
+        {!showCodeInput ? (
+          <View className='ob-cards'>
+            <View className='ob-card' onClick={handlePickOrganizer}>
+              <Text className='ob-card-title'>我是收纳师</Text>
+              <Text className='ob-card-desc'>创建和管理客户的收纳空间</Text>
+            </View>
+            <View className='ob-card' onClick={() => setShowCodeInput(true)}>
+              <Text className='ob-card-title'>我是住户</Text>
+              <Text className='ob-card-desc'>收纳师已为我整理，我要查看我的空间</Text>
+            </View>
+          </View>
+        ) : (
+          <View className='ob-code'>
+            <Text className='ob-code-label'>请输入收纳师提供的分享码</Text>
+            <Input className='ob-code-input' placeholder='输入分享码' value={shareCode} onInput={e => setShareCode(e.detail.value)} maxlength={20} />
+            <View className={`ob-join-btn ${joining ? 'disabled' : ''}`} onClick={handleJoinAsResident}>
+              <Text className='ob-join-text'>{joining ? '加入中...' : '加入空间'}</Text>
+            </View>
+            <Text className='ob-back' onClick={() => setShowCodeInput(false)}>返回选择身份</Text>
+          </View>
+        )}
+      </View>
+    )
+  }
 
   return (
     <View className='index-page'>

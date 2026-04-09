@@ -24,13 +24,17 @@ function log(msg: string, ...args: any[]) {
 // ===== Space API (via cloud function) =====
 
 async function callSpaceApi(action: string, data: any = {}) {
+  log(`callSpaceApi: ${action}`, data.spaceId || '')
   const res = await Taro.cloud!.callFunction({
     name: 'space-api',
     data: { action, ...data },
   }) as any
   if (!res.result?.success) {
-    throw new Error(res.result?.error || `space-api ${action} failed`)
+    const err = res.result?.error || `space-api ${action} failed`
+    log(`callSpaceApi ${action} FAILED:`, err)
+    throw new Error(err)
   }
+  log(`callSpaceApi ${action} OK`)
   return res.result
 }
 
@@ -179,26 +183,18 @@ export async function cloudSearchItems(query: string) {
 
 // ===== Floorplan Sync =====
 
-export async function cloudSaveFloorplan(floorplanJson: string, rectsJson: string, rectMapJson: string) {
-  const db = getDb()
-  log('saveFloorplan start')
-  const existing = await db.collection('floorplans').limit(1).get()
-  const data = { floorplan: floorplanJson, rects: rectsJson, rectMap: rectMapJson, updatedAt: new Date() }
-  if (existing.data.length > 0) {
-    await db.collection('floorplans').doc(existing.data[0]._id).update({ data })
-  } else {
-    await db.collection('floorplans').add({ data })
-  }
+export async function cloudSaveFloorplan(spaceId: string, floorplanJson: string, rectsJson: string, rectMapJson: string) {
+  log('saveFloorplan start', spaceId)
+  await callSpaceApi('saveFloorplan', { spaceId, floorplan: floorplanJson, rects: rectsJson, rectMap: rectMapJson })
   log('saveFloorplan done')
 }
 
-export async function cloudLoadFloorplan(): Promise<{ floorplan: string; rects: string; rectMap: string } | null> {
-  const db = getDb()
-  log('loadFloorplan start')
-  const res = await db.collection('floorplans').limit(1).get()
-  if (res.data.length > 0) {
+export async function cloudLoadFloorplan(spaceId: string): Promise<{ floorplan: string; rects: string; rectMap: string } | null> {
+  log('loadFloorplan start', spaceId)
+  const result = await callSpaceApi('loadFloorplan', { spaceId })
+  if (result.floorplan) {
     log('loadFloorplan found')
-    return { floorplan: res.data[0].floorplan, rects: res.data[0].rects, rectMap: res.data[0].rectMap }
+    return { floorplan: result.floorplan, rects: result.rects, rectMap: result.rectMap }
   }
   log('loadFloorplan empty')
   return null

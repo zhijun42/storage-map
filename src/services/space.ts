@@ -56,8 +56,8 @@ export async function pullFromCloudIfEmpty() {
   try {
     // Pull space data
     const spaces = await cloudService.cloudGetSpaces()
+    const fullSpaces: any[] = []
     if (spaces.length > 0) {
-      const fullSpaces: any[] = []
       for (const s of spaces) {
         const full = await cloudService.cloudGetSpace(s._id)
         if (full) fullSpaces.push(full)
@@ -68,16 +68,18 @@ export async function pullFromCloudIfEmpty() {
       }
     }
 
-    // Pull floorplan visual data
-    try {
-      const fp = await cloudService.cloudLoadFloorplan()
-      if (fp) {
-        if (fp.floorplan) Taro.setStorageSync('drawn_floorplan', fp.floorplan)
-        if (fp.rects) Taro.setStorageSync('draw_all_rects', fp.rects)
-        if (fp.rectMap) Taro.setStorageSync('rect_container_map', fp.rectMap)
-        console.log('[Sync] Pulled floorplan data from cloud')
-      }
-    } catch {}
+    // Pull floorplan visual data for each space
+    for (const s of fullSpaces) {
+      try {
+        const fp = await cloudService.cloudLoadFloorplan(s._id)
+        if (fp) {
+          if (fp.floorplan) Taro.setStorageSync(`drawn_floorplan_${s._id}`, fp.floorplan)
+          if (fp.rects) Taro.setStorageSync(`draw_all_rects_${s._id}`, fp.rects)
+          if (fp.rectMap) Taro.setStorageSync(`rect_container_map_${s._id}`, fp.rectMap)
+          console.log(`[Sync] Pulled floorplan for space: ${s._id}`)
+        }
+      } catch {}
+    }
   } catch (err: any) {
     console.warn('[Sync] Pull failed:', err.message || err)
   }
@@ -97,6 +99,18 @@ export async function pullSharedSpace(spaceId: string) {
     }
     saveData(data)
     console.log(`[Sync] Pulled shared space: ${space.name}`)
+
+    // Also pull floorplan visual data for this space
+    try {
+      const fp = await cloudService.cloudLoadFloorplan(spaceId)
+      if (fp) {
+        if (fp.floorplan) Taro.setStorageSync(`drawn_floorplan_${spaceId}`, fp.floorplan)
+        if (fp.rects) Taro.setStorageSync(`draw_all_rects_${spaceId}`, fp.rects)
+        if (fp.rectMap) Taro.setStorageSync(`rect_container_map_${spaceId}`, fp.rectMap)
+        console.log(`[Sync] Pulled floorplan for space: ${spaceId}`)
+      }
+    } catch {}
+
     return true
   } catch (err: any) {
     console.warn('[Sync] Pull shared space failed:', err.message || err)
@@ -124,12 +138,19 @@ export async function getSpace(id: string) {
 
 export async function createSpace(name: string) {
   const data = getData()
+
+  if (useCloud()) {
+    // Use cloud-generated _id so local and cloud IDs match
+    const cloudResult = await cloudService.cloudCreateSpace(name)
+    const space = { _id: String(cloudResult._id), name, rooms: [], createdAt: new Date().toISOString() }
+    data.spaces.push(space)
+    saveData(data)
+    return space
+  }
+
   const space = { _id: generateId(), name, rooms: [], createdAt: new Date().toISOString() }
   data.spaces.push(space)
   saveData(data)
-
-  syncToCloud('createSpace', () => cloudService.cloudCreateSpace(name))
-
   return space
 }
 
