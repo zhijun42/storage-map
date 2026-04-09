@@ -606,4 +606,40 @@ describe('initExampleSpace', () => {
     const demoCount2 = second.filter((s: any) => s.name === '示例之家').length
     expect(demoCount2).toBe(1)
   })
+
+  it('fills an existing space with mock data when spaceId is provided', async () => {
+    const space = await createSpace('张先生的家')
+    const result = await initExampleSpace(space._id)
+    expect(result.rooms).toBeGreaterThan(0)
+    expect(result.items).toBeGreaterThan(0)
+
+    const filled = await getSpace(space._id)
+    expect(filled.name).toBe('张先生的家')
+    expect(filled.rooms.length).toBeGreaterThan(0)
+    expect(filled.rooms[0].containers.length).toBeGreaterThan(0)
+  })
+
+  it('clears existing rooms when filling a space', async () => {
+    const space = await createSpace('测试空间')
+    await addRoom(space._id, '旧房间')
+    const before = await getSpace(space._id)
+    expect(before.rooms).toHaveLength(1)
+    expect(before.rooms[0].name).toBe('旧房间')
+
+    await initExampleSpace(space._id)
+    const after = await getSpace(space._id)
+    expect(after.rooms.every((r: any) => r.name !== '旧房间')).toBe(true)
+    expect(after.rooms.length).toBeGreaterThan(1)
+  })
+
+  it('does not create a new space when filling existing one', async () => {
+    await createSpace('空间A')
+    const space = await createSpace('空间B')
+    await initExampleSpace(space._id)
+
+    const spaces = await getSpaces()
+    expect(spaces).toHaveLength(2)
+    expect(spaces.some((s: any) => s.name === '空间A')).toBe(true)
+    expect(spaces.some((s: any) => s.name === '空间B')).toBe(true)
+  })
 })
