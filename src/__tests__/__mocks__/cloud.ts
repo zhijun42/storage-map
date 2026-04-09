@@ -9,6 +9,7 @@ export const cloudAddContainer = async () => ({})
 export const cloudUpdateContainer = async () => {}
 export const cloudDeleteContainer = async () => {}
 export const cloudSearchItems = async () => []
+export const cloudClearAll = async () => {}
 export const cloudSaveFloorplan = async () => {}
 export const cloudLoadFloorplan = async () => null
 export const cloudUploadPhoto = async () => ''

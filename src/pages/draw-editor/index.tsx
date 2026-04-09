@@ -647,23 +647,31 @@ export default function DrawEditor() {
   }
 
   function clearPhase() {
-    const active = getActiveRects()
-    if (active.length === 0) return
-    Taro.showModal({
-      title: '清空', content: `确定清空当前${PHASE_META[phase].label}绘制？`,
-      success: (res) => {
-        if (!res.confirm) return
-        const p = phaseRef.current
-        let newAll: Rect[]
-        if (p === 'elevation') {
-          newAll = allRectsRef.current.filter(r => !(r.phase === 'elevation' && r.cabinetId === editCabRef.current))
-        } else {
-          newAll = allRectsRef.current.filter(r => r.phase !== p)
-        }
-        allRectsRef.current = newAll; selectedIdRef.current = null
-        setAllRects(newAll); setSelectedRectId(null)
-      },
-    })
+    if (allRectsRef.current.length === 0) return
+    if (phaseRef.current === 'elevation') {
+      // In elevation: only clear this cabinet's slots
+      const elRects = allRectsRef.current.filter(r => r.phase === 'elevation' && r.cabinetId === editCabRef.current)
+      if (elRects.length === 0) return
+      Taro.showModal({
+        title: '清空', content: '确定清空当前立面隔间？',
+        success: (res) => {
+          if (!res.confirm) return
+          const newAll = allRectsRef.current.filter(r => !(r.phase === 'elevation' && r.cabinetId === editCabRef.current))
+          allRectsRef.current = newAll; selectedIdRef.current = null
+          setAllRects(newAll); setSelectedRectId(null)
+        },
+      })
+    } else {
+      // In floorplan: clear ALL phases (rooms + furniture + cabinets + all elevations)
+      Taro.showModal({
+        title: '清空', content: '确定清空所有绘制内容（房间、家具、储物柜）？',
+        success: (res) => {
+          if (!res.confirm) return
+          allRectsRef.current = []; selectedIdRef.current = null
+          setAllRects([]); setSelectedRectId(null); setPhase('room')
+        },
+      })
+    }
   }
 
   function resetView() {
@@ -1010,9 +1018,6 @@ export default function DrawEditor() {
               <Text className='bottom-btn-text light'>确定并返回平面</Text>
             </View>
           )}
-          <View className='bottom-btn' onClick={handleSave}>
-            <Text className='bottom-btn-text'>保存数据</Text>
-          </View>
         </View>
       )}
 

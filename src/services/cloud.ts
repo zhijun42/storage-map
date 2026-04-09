@@ -104,6 +104,21 @@ export async function cloudCreateSpace(name: string) {
   return { _id: res._id, name }
 }
 
+export async function cloudClearAll() {
+  const db = getDb()
+  log('clearAll start')
+  const collections = ['slots', 'containers', 'rooms', 'spaces', 'floorplans']
+  for (const col of collections) {
+    try {
+      const res = await db.collection(col).limit(100).get()
+      for (const doc of res.data) {
+        try { await db.collection(col).doc(doc._id).remove({} as any) } catch {}
+      }
+    } catch {}
+  }
+  log('clearAll done')
+}
+
 export async function cloudDeleteSpace(id: string) {
   const db = getDb()
   // 级联删除：slots → containers → rooms → space
