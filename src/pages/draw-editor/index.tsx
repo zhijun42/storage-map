@@ -128,8 +128,8 @@ export default function DrawEditor() {
   // ===== Init =====
   useEffect(() => {
     Taro.setNavigationBarTitle({ title: '空间绘制' })
-    const sys = Taro.getSystemInfoSync()
-    setCanvasH(Math.max(sys.windowHeight - 210, 250))
+    const winInfo = Taro.getWindowInfo()
+    setCanvasH(Math.max(winInfo.windowHeight - 210, 250))
     setTimeout(initCanvas, 500)
   }, [])
 
@@ -162,7 +162,7 @@ export default function DrawEditor() {
           if (!res?.[0]?.node) return
           const canvas = res[0].node
           const ctx = canvas.getContext('2d')
-          const dpr = Taro.getSystemInfoSync().pixelRatio || 2
+          const dpr = Taro.getWindowInfo().pixelRatio || 2
           const cw = res[0].width; const ch = res[0].height
           if (!cw || !ch) return
           canvas.width = cw * dpr; canvas.height = ch * dpr

@@ -52,9 +52,9 @@ export default function IsometricView({
   const aspect = elevationAspect || 1.2
 
   // When cabinet is too tall, shrink the whole cabinet width to fit one screen
-  const sysInfo = Taro.getSystemInfoSync()
-  const maxH = sysInfo.windowHeight * 0.55
-  const fullWidth = sysInfo.windowWidth - 48 - 32 - 32
+  const windowInfo = Taro.getWindowInfo()
+  const maxH = windowInfo.windowHeight * 0.55
+  const fullWidth = windowInfo.windowWidth - 48 - 32 - 32
   const naturalH = fullWidth * aspect
   const needsScale = naturalH > maxH
   const scaledWidth = needsScale ? Math.round(maxH / aspect) : undefined
