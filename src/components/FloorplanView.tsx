@@ -184,12 +184,12 @@ export default function FloorplanView({ rooms, compact, highlightContainerId, on
       rooms.forEach(room => {
         room.containers?.forEach(container => {
           let pos: { x: number; y: number; w: number; h: number } | undefined
-          // 1st: from drawn_floorplan container positions (most reliable)
-          pos = drawnContainerPos[container.name]
-          // 2nd: from container's own fields (if cloud stored them)
-          if (!pos && container.x != null && container.y != null && container.width != null && container.height != null) {
+          // 1st: from container's own fields (unique per container)
+          if (container.x != null && container.y != null && container.width != null && container.height != null) {
             pos = { x: container.x, y: container.y, w: container.width, h: container.height }
           }
+          // 2nd: from drawn_floorplan container positions (name-based fallback)
+          if (!pos) pos = drawnContainerPos[container.name]
           // 3rd: hardcoded fallback
           if (!pos) pos = CONTAINER_POS[container.name]
           if (!pos) return

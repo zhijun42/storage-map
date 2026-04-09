@@ -1,4 +1,5 @@
 import { View, Text } from '@tarojs/components'
+import Taro from '@tarojs/taro'
 import { normalizeItems } from '../services/items'
 import './IsometricView.scss'
 
@@ -51,6 +52,14 @@ export default function IsometricView({
   const layout = flexible ? 'flexible' : detectLayout(slots)
   const aspect = elevationAspect || 1.2
 
+  // When cabinet is too tall, shrink the whole cabinet width to fit one screen
+  const sysInfo = Taro.getSystemInfoSync()
+  const maxH = sysInfo.windowHeight * 0.55
+  const fullWidth = sysInfo.windowWidth - 48 - 32 - 32
+  const naturalH = fullWidth * aspect
+  const needsScale = naturalH > maxH
+  const scaledWidth = needsScale ? Math.round(maxH / aspect) : undefined
+
   return (
     <View className='isometric-container'>
       {dimensions && (
@@ -60,7 +69,7 @@ export default function IsometricView({
         </View>
       )}
 
-      <View className='cabinet'>
+      <View className='cabinet' style={scaledWidth ? { width: `${scaledWidth}px`, margin: '0 auto' } : undefined}>
         <View className='cabinet-top' />
         <View className='cabinet-side' />
         <View className='cabinet-edge' />

@@ -5,15 +5,15 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const API_KEY = 'sk-u4RwSO07PsQSDb5L0qX5iUvnOFKnKujrC96soYasasTyBwl9'
 const API_URL = 'https://api.moonshot.cn/v1/chat/completions'
-const MODEL = 'kimi-k2.5'
+const MODEL = 'moonshot-v1-8k'
 
 function callLLM(prompt) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: MODEL,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2000,
-      temperature: 1,
+      max_tokens: 1000,
+      temperature: 0.7,
     })
 
     const url = new URL(API_URL)
@@ -127,7 +127,7 @@ function buildPrompt(spaceData, profileData) {
 - 用 **加粗** 标记小标题，用 - 列表项展示建议
 - 不要使用 # ## ### 等标题语法
 - 建议具体可操作，语气友善专业
-- 总长度600-800字
+- 总长度300-400字
 - 结尾直接结束建议，不要写"如需进一步""欢迎追问"等邀请性结语`
 
   return prompt

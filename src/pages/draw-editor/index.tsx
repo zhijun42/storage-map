@@ -51,6 +51,9 @@ interface DrawState {
   currX: number; currY: number
   snappedX: number | null; snappedY: number | null
   isError: boolean; hasMoved: boolean
+  isDragging: boolean
+  dragRect: Rect | null
+  dragOffsetX: number; dragOffsetY: number
 }
 
 // ===== Component =====
@@ -67,6 +70,7 @@ export default function DrawEditor() {
     isDrawing: false, rawStartX: 0, rawStartY: 0,
     startX: 0, startY: 0, currX: 0, currY: 0,
     snappedX: null, snappedY: null, isError: false, hasMoved: false,
+    isDragging: false, dragRect: null, dragOffsetX: 0, dragOffsetY: 0,
   })
   const boundsRef = useRef<{ left: number; top: number } | null>(null)
   const ctxRef = useRef<any>(null)
@@ -77,6 +81,33 @@ export default function DrawEditor() {
   const phaseRef = useRef<Phase>(phase)
   const selectedIdRef = useRef<string | null>(null)
   const editCabRef = useRef<string | null>(null)
+
+  // Undo/redo history
+  const historyRef = useRef<Rect[][]>([])
+  const historyIdxRef = useRef(-1)
+
+  function pushHistory(rects: Rect[]) {
+    historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1)
+    historyRef.current.push(JSON.parse(JSON.stringify(rects)))
+    historyIdxRef.current = historyRef.current.length - 1
+    if (historyRef.current.length > 50) { historyRef.current.shift(); historyIdxRef.current-- }
+  }
+
+  function undo() {
+    if (historyIdxRef.current <= 0) return
+    historyIdxRef.current--
+    const rects = JSON.parse(JSON.stringify(historyRef.current[historyIdxRef.current]))
+    allRectsRef.current = rects; selectedIdRef.current = null
+    setAllRects(rects); setSelectedRectId(null)
+  }
+
+  function redo() {
+    if (historyIdxRef.current >= historyRef.current.length - 1) return
+    historyIdxRef.current++
+    const rects = JSON.parse(JSON.stringify(historyRef.current[historyIdxRef.current]))
+    allRectsRef.current = rects; selectedIdRef.current = null
+    setAllRects(rects); setSelectedRectId(null)
+  }
 
   // Viewport: pinch-to-zoom + pan
   const viewRef = useRef({ scale: 1, ox: 0, oy: 0 })
@@ -110,6 +141,7 @@ export default function DrawEditor() {
         const rects = JSON.parse(saved) as Rect[]
         if (Array.isArray(rects) && rects.every(r => r && typeof r.x === 'number' && typeof r.phase === 'string')) {
           allRectsRef.current = rects; setAllRects(rects)
+          pushHistory(rects)
         } else {
           Taro.removeStorageSync('draw_all_rects')
         }
@@ -345,9 +377,9 @@ export default function DrawEditor() {
       })
     }
 
-    // Preview rect (world space)
+    // Preview rect (world space) — not during drag mode
     const ds = drawStateRef.current
-    if (ds.isDrawing && ds.hasMoved) {
+    if (ds.isDrawing && ds.hasMoved && !ds.isDragging) {
       const ax = ds.snappedX ?? ds.currX; const ay = ds.snappedY ?? ds.currY
       const pv = stdRect(ds.startX, ds.startY, ax, ay)
       const sw = (px: number) => px / v.scale
@@ -362,7 +394,7 @@ export default function DrawEditor() {
     ctx.restore()
 
     // Snap guides in screen space (after restore)
-    if (ds.isDrawing && ds.hasMoved) {
+    if (ds.isDrawing && ds.hasMoved && !ds.isDragging) {
       ctx.setLineDash([4, 4]); ctx.strokeStyle = '#3B82F6'; ctx.lineWidth = 1
       if (ds.snappedX !== null) {
         const sx = ds.snappedX * v.scale + v.ox
@@ -397,10 +429,15 @@ export default function DrawEditor() {
       return
     }
 
-    // Single finger → draw/tap
+    // Single finger → check hit for drag, otherwise draw/tap
     const t = e.touches?.[0]; if (!t) return
     const rawX = t.clientX - bnd.left; const rawY = t.clientY - bnd.top
     const wc = screenToWorld(rawX, rawY)
+
+    // Check if touching an existing rect → prepare for potential drag
+    const active = getActiveRects()
+    const hitRect = [...active].reverse().find(r => ptInRect(wc.x, wc.y, r))
+
     const snapDist = SNAP_DISTANCE / viewRef.current.scale
     const { xPool, yPool } = getSnapPools()
     const sx = nearSnap(wc.x, xPool, snapDist); const sy = nearSnap(wc.y, yPool, snapDist)
@@ -410,6 +447,10 @@ export default function DrawEditor() {
       startX: sx ?? wc.x, startY: sy ?? wc.y,
       currX: wc.x, currY: wc.y,
       snappedX: null, snappedY: null, isError: false, hasMoved: false,
+      isDragging: false,
+      dragRect: hitRect ? { ...hitRect } : null,
+      dragOffsetX: hitRect ? wc.x - hitRect.x : 0,
+      dragOffsetY: hitRect ? wc.y - hitRect.y : 0,
     }
   }
 
@@ -446,21 +487,71 @@ export default function DrawEditor() {
       return
     }
 
-    // Single finger drawing
+    // Single finger drawing or dragging
     const ds = drawStateRef.current
     if (!ds.isDrawing) return
-    if (e.touches?.length >= 2) { ds.isDrawing = false; return }
+    if (e.touches?.length >= 2) { ds.isDrawing = false; ds.isDragging = false; return }
 
     const t = e.touches?.[0]; if (!t) return
     const rawX = t.clientX - bnd.left; const rawY = t.clientY - bnd.top
 
     if (!ds.hasMoved) {
-      if (Math.hypot(rawX - ds.rawStartX, rawY - ds.rawStartY) > 5) ds.hasMoved = true
-      else return
+      if (Math.hypot(rawX - ds.rawStartX, rawY - ds.rawStartY) > 5) {
+        ds.hasMoved = true
+        // If we started on an existing rect, enter drag mode
+        if (ds.dragRect) ds.isDragging = true
+      } else return
     }
 
     const wc = screenToWorld(rawX, rawY)
     const snapDist = SNAP_DISTANCE / viewRef.current.scale
+
+    if (ds.isDragging && ds.dragRect) {
+      // Drag mode: move the rect
+      const newX = wc.x - ds.dragOffsetX
+      const newY = wc.y - ds.dragOffsetY
+
+      // Snap the rect edges
+      const { xPool, yPool } = getSnapPools()
+      // Remove the dragged rect's own edges from snap pool
+      const filteredXPool = xPool.filter(v => Math.abs(v - ds.dragRect!.x) > 1 && Math.abs(v - ds.dragRect!.x - ds.dragRect!.w) > 1)
+      const filteredYPool = yPool.filter(v => Math.abs(v - ds.dragRect!.y) > 1 && Math.abs(v - ds.dragRect!.y - ds.dragRect!.h) > 1)
+
+      const sxL = nearSnap(newX, filteredXPool, snapDist)
+      const sxR = nearSnap(newX + ds.dragRect.w, filteredXPool, snapDist)
+      const syT = nearSnap(newY, filteredYPool, snapDist)
+      const syB = nearSnap(newY + ds.dragRect.h, filteredYPool, snapDist)
+
+      const finalX = sxL != null ? sxL : sxR != null ? sxR - ds.dragRect.w : newX
+      const finalY = syT != null ? syT : syB != null ? syB - ds.dragRect.h : newY
+
+      if ((sxL != null || sxR != null) && ds.snappedX == null) { try { Taro.vibrateShort({ type: 'light' }) } catch {} }
+      if ((syT != null || syB != null) && ds.snappedY == null) { try { Taro.vibrateShort({ type: 'light' }) } catch {} }
+
+      // Check collision with other rects
+      const movedRect = { x: finalX, y: finalY, w: ds.dragRect.w, h: ds.dragRect.h }
+      let isError = false
+      const active = getActiveRects()
+      for (const r of active) {
+        if (r.id === ds.dragRect.id) continue
+        if (intersects(movedRect, r)) { isError = true; break }
+      }
+
+      // Update rect position in allRects for live preview
+      const newAll = allRectsRef.current.map(r =>
+        r.id === ds.dragRect!.id ? { ...r, x: finalX, y: finalY } : r
+      )
+      allRectsRef.current = newAll; setAllRects(newAll)
+
+      drawStateRef.current = {
+        ...ds, currX: wc.x, currY: wc.y, isError, hasMoved: true,
+        snappedX: sxL ?? sxR ?? null, snappedY: syT ?? syB ?? null,
+      }
+      renderCanvas()
+      return
+    }
+
+    // Normal draw mode
     const { xPool, yPool } = getSnapPools()
     const sx = nearSnap(wc.x, xPool, snapDist); const sy = nearSnap(wc.y, yPool, snapDist)
 
@@ -490,7 +581,20 @@ export default function DrawEditor() {
     const ds = drawStateRef.current
     if (!ds.isDrawing) return
 
-    if (!ds.hasMoved) {
+    if (ds.isDragging && ds.dragRect) {
+      // End drag — position already updated during move
+      if (!ds.isError) {
+        pushHistory(allRectsRef.current)
+        selectedIdRef.current = ds.dragRect.id
+        setSelectedRectId(ds.dragRect.id)
+      } else {
+        // Revert to original position on collision
+        const newAll = allRectsRef.current.map(r =>
+          r.id === ds.dragRect!.id ? { ...r, x: ds.dragRect!.x, y: ds.dragRect!.y } : r
+        )
+        allRectsRef.current = newAll; setAllRects(newAll)
+      }
+    } else if (!ds.hasMoved) {
       // Tap → select/deselect in world space
       const wc = screenToWorld(ds.rawStartX, ds.rawStartY)
       const active = getActiveRects()
@@ -512,10 +616,14 @@ export default function DrawEditor() {
         const newAll = [...allRectsRef.current, newRect]
         allRectsRef.current = newAll; selectedIdRef.current = id
         setAllRects(newAll); setSelectedRectId(id)
+        pushHistory(newAll)
       }
     }
 
-    drawStateRef.current = { ...ds, isDrawing: false, hasMoved: false, snappedX: null, snappedY: null, isError: false }
+    drawStateRef.current = {
+      ...ds, isDrawing: false, hasMoved: false, snappedX: null, snappedY: null,
+      isError: false, isDragging: false, dragRect: null, dragOffsetX: 0, dragOffsetY: 0,
+    }
     renderCanvas()
   }
 
@@ -531,6 +639,7 @@ export default function DrawEditor() {
       return { ...r, labels: [tag] }
     })
     allRectsRef.current = newAll; setAllRects(newAll)
+    pushHistory(newAll)
     // For non-elevation phases, deselect after labeling
     if (phase !== 'elevation') { selectedIdRef.current = null; setSelectedRectId(null) }
     setCustomInput('')
@@ -540,6 +649,7 @@ export default function DrawEditor() {
     if (!selectedRectId) return
     const newAll = allRectsRef.current.map(r => r.id === selectedRectId ? { ...r, slotType: type } : r)
     allRectsRef.current = newAll; setAllRects(newAll)
+    pushHistory(newAll)
   }
 
   // Count items in a cabinet by draw rect ID → space service container ID mapping
@@ -577,6 +687,7 @@ export default function DrawEditor() {
       const newAll = allRectsRef.current.filter(r => !deleteIds.has(r.id))
       allRectsRef.current = newAll; selectedIdRef.current = null
       setAllRects(newAll); setSelectedRectId(null)
+      pushHistory(newAll)
     }
 
     if (rect.phase === 'room') {
@@ -587,7 +698,6 @@ export default function DrawEditor() {
       })
       const containedCabs = contained.filter(r => r.phase === 'cabinet')
 
-      // Check if any contained cabinet has real items (by ID mapping)
       for (const cab of containedCabs) {
         const itemCount = await countCabinetItems(cab.id)
         if (itemCount > 0) {
@@ -618,7 +728,6 @@ export default function DrawEditor() {
     }
 
     if (rect.phase === 'cabinet') {
-      // Check if cabinet has real items (by ID mapping)
       const itemCount = await countCabinetItems(rect.id)
       if (itemCount > 0) {
         Taro.showModal({
@@ -642,14 +751,12 @@ export default function DrawEditor() {
       }
     }
 
-    // Simple delete (furniture, empty cabinet, elevation rect)
     doCascadeDelete([])
   }
 
   function clearPhase() {
     if (allRectsRef.current.length === 0) return
     if (phaseRef.current === 'elevation') {
-      // In elevation: only clear this cabinet's slots
       const elRects = allRectsRef.current.filter(r => r.phase === 'elevation' && r.cabinetId === editCabRef.current)
       if (elRects.length === 0) return
       Taro.showModal({
@@ -659,16 +766,17 @@ export default function DrawEditor() {
           const newAll = allRectsRef.current.filter(r => !(r.phase === 'elevation' && r.cabinetId === editCabRef.current))
           allRectsRef.current = newAll; selectedIdRef.current = null
           setAllRects(newAll); setSelectedRectId(null)
+          pushHistory(newAll)
         },
       })
     } else {
-      // In floorplan: clear ALL phases (rooms + furniture + cabinets + all elevations)
       Taro.showModal({
         title: '清空', content: '确定清空所有绘制内容（房间、家具、储物柜）？',
         success: (res) => {
           if (!res.confirm) return
           allRectsRef.current = []; selectedIdRef.current = null
           setAllRects([]); setSelectedRectId(null); setPhase('room')
+          pushHistory([])
         },
       })
     }
@@ -941,6 +1049,12 @@ export default function DrawEditor() {
             })}
           </View>
           <View className='top-right-btns'>
+            <View className={`text-btn ${historyIdxRef.current <= 0 ? 'disabled' : ''}`} onClick={undo}>
+              <Text className='text-btn-label'>撤销</Text>
+            </View>
+            <View className={`text-btn ${historyIdxRef.current >= historyRef.current.length - 1 ? 'disabled' : ''}`} onClick={redo}>
+              <Text className='text-btn-label'>重做</Text>
+            </View>
             <View className='text-btn' onClick={resetView}>
               <Text className='text-btn-label'>重置视图</Text>
             </View>
@@ -958,6 +1072,12 @@ export default function DrawEditor() {
             立面: {editingCabinet?.labels?.[0] || '储物柜'}
           </Text>
           <View className='top-right-btns'>
+            <View className={`text-btn ${historyIdxRef.current <= 0 ? 'disabled' : ''}`} onClick={undo}>
+              <Text className='text-btn-label'>撤销</Text>
+            </View>
+            <View className={`text-btn ${historyIdxRef.current >= historyRef.current.length - 1 ? 'disabled' : ''}`} onClick={redo}>
+              <Text className='text-btn-label'>重做</Text>
+            </View>
             <View className='text-btn' onClick={resetView}>
               <Text className='text-btn-label'>重置视图</Text>
             </View>

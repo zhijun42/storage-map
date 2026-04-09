@@ -99,16 +99,28 @@ page {
 
     .top-right-btns {
       display: flex;
-      gap: 4px;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
     }
 
     .text-btn {
-      padding: 8px 16px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: hsl(210, 12%, 96%);
+
+      &.disabled {
+        opacity: 0.3;
+        pointer-events: none;
+      }
+
+      &:active { opacity: 0.7; }
 
       .text-btn-label {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: 500;
         color: hsl(215, 10%, 46%);
+        white-space: nowrap;
 
         &.danger { color: hsl(0, 72%, 50%); }
       }
