@@ -67,6 +67,7 @@ export default function FloorplanView({ rooms, compact, spaceId, highlightContai
 
   function draw() {
     const floorplanData = getFloorplanData(spaceId)
+    console.log(`[FloorplanView] draw: spaceId=${spaceId} rooms=${rooms.length} fpRooms=${floorplanData?.rooms?.length || 0} compact=${compact}`)
 
     // Build container position map from drawn_floorplan
     const drawnContainerPos: Record<string, { x: number; y: number; w: number; h: number }> = {}

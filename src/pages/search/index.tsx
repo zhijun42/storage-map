@@ -52,11 +52,17 @@ export default function SearchPage() {
 
   async function loadRooms() {
     const spaces = await getSpaces()
-    if (spaces.length > 0) {
-      setCurrentSpaceId(spaces[0]._id)
-      const space = await getSpace(spaces[0]._id)
-      if (space?.rooms) setRooms(space.rooms)
+    if (spaces.length === 0) return
+    // Find a space that has floorplan data, prefer the last one
+    let targetId = spaces[spaces.length - 1]._id
+    for (const s of spaces) {
+      try {
+        if (Taro.getStorageSync(`drawn_floorplan_${s._id}`)) { targetId = s._id; break }
+      } catch {}
     }
+    setCurrentSpaceId(targetId)
+    const space = await getSpace(targetId)
+    if (space?.rooms) setRooms(space.rooms)
   }
 
   async function handleSearch(value: string) {
@@ -71,6 +77,12 @@ export default function SearchPage() {
     setResults(res)
     setSearched(true)
     setHighlightContainerId(res.length > 0 ? res[0].containerId : null)
+    // Switch floorplan to the space containing the first result
+    if (res.length > 0 && res[0].spaceId && res[0].spaceId !== currentSpaceId) {
+      setCurrentSpaceId(res[0].spaceId)
+      const space = await getSpace(res[0].spaceId)
+      if (space?.rooms) setRooms(space.rooms)
+    }
   }
 
   function handleResultClick(result: any) {
